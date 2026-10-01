@@ -1,167 +1,182 @@
 # OBD2MQTT – BLE-OBD2 → MQTT → Home Assistant
 
-> **Beta.** Getestet am Hyundai IONIQ 5. Die XPeng-Profile (G6, G9, P7+) sind noch **ungetestet**, Rückmeldungen sind sehr willkommen (Issue oder Forum).
-> *English: see [docs/manual_en.html](docs/manual_en.html) and [CHANGELOG.en.md](CHANGELOG.en.md). The web UI can be switched to English (top right).*
+> **Beta.** Tested on a Hyundai IONIQ 5. The XPeng profiles (G6, G9, P7+) are still **untested** – feedback is very welcome (GitHub issue or forum).
+> 🇩🇪 *Deutsche Version: [README.de.md](README.de.md)*
 
-**[⬇ Download: neueste Firmware (Releases)](../../releases/latest)** · [Handbuch](docs/handbuch.html) · [Changelog](CHANGELOG.md)
+**[⬇ Download: latest firmware (Releases)](../../releases/latest)** · [Manual](docs/manual_en.html) · [Changelog](CHANGELOG.en.md)
 
-ESP32-Firmware, die sich per Bluetooth LE mit einem ELM327-kompatiblen OBD2-Dongle im Auto verbindet, konfigurierbare PIDs abfragt und die Werte per MQTT (mit Home-Assistant-Auto-Discovery) veröffentlicht. Die gesamte Konfiguration läuft über eine Weboberfläche.
+ESP32 firmware that connects via Bluetooth LE to an ELM327-compatible OBD2 dongle in the car, polls configurable PIDs and publishes the values via MQTT (with Home Assistant auto-discovery). Everything is configured through a web interface – no YAML, no programming.
 
-**Empfohlener Aufbau:** Der ESP32 hängt fest in der Garage (im WLAN, am USB-Netzteil), der Dongle steckt im Auto. Sobald das Auto in BLE-Reichweite steht (typisch 5–15 m), kommen die Werte an.
+**Recommended setup:** the ESP32 stays in the garage (on WiFi, USB power supply), the dongle stays plugged into the car. As soon as the car is within BLE range (typically 5–15 m), values arrive in Home Assistant.
 
-## Funktionen
+```
+Car (OBD2 dongle) ──Bluetooth LE──► ESP32 in the garage ──WiFi──► MQTT ──► Home Assistant / evcc
+```
 
-- BLE-Client für ELM327-Dongles (Auto-Erkennung gängiger UUIDs: FFF0, FFE0, 18F0, vLinker; manuell überschreibbar)
-- Fahrzeugprofile als JSON (vorinstalliert: Hyundai IONIQ 5 / Kia EV6, XPeng G6, G9 und P7+), in der Web-UI editierbar
-- Weboberfläche und Handbuch auf Deutsch und Englisch, Sichern/Wiederherstellen der Einstellungen, Log mit Uhrzeit
-- PIDs mit frei definierbarer Formel (`B34/2`, `u16(B28,B29)/10`, `s16(..)`, `s8(..)`, `bit(x,n)`)
-- **Test-Button** pro PID: zeigt alle Antwort-Bytes mit Index an, damit du Byte-Positionen leicht findest
-- ELM327-Terminal im Browser
-- MQTT Auto-Discovery: Sensoren erscheinen automatisch als Gerät in Home Assistant
-- 12-V-Schutz (ATRV), Pause wenn das Auto nicht antwortet, BLE wird zwischen den Abfragen getrennt, damit der Dongle schlafen kann
-- Setup-Access-Point mit Captive Portal, mDNS (`http://obd2mqtt.local`), OTA-Update, optionaler Passwortschutz
+## Features
 
-## Flashen
+- BLE client for ELM327 dongles (auto-detects common UUIDs: FFF0, FFE0, 18F0, vLinker; can be overridden manually)
+- Vehicle profiles as JSON (pre-installed: Hyundai IONIQ 5 / Kia EV6, XPeng G6, G9 and P7+), editable in the web UI
+- Web interface and built-in manual in English and German, backup/restore of all settings, log with real time (NTP)
+- PIDs with freely definable formulas (`B34/2`, `u16(B28,B29)/10`, `s16(..)`, `s8(..)`, `bit(x,n)`)
+- **Test button** per PID: shows every response byte with its index so you can easily find byte positions
+- ELM327 terminal in the browser
+- MQTT auto-discovery: sensors appear automatically as a device in Home Assistant
+- 12 V protection (ATRV), pause when the car doesn't respond, BLE disconnects between polls so the dongle can sleep
+- Setup access point with captive portal, mDNS (`http://obd2mqtt.local`), OTA updates, optional password protection
+- Watchdog with automatic restart and safe mode
 
-**Variante A – ohne Toolchain (klassischer ESP32):**
-Unter [Releases](../../releases/latest) die Datei `obd2mqtt-vX.Y.Z-esp32-factory.bin` herunterladen und mit einem Web-Flasher in Chrome/Edge (z. B. https://espressif.github.io/esptool-js/) an **Adresse 0x0** flashen.
+## What you need
 
-**Variante B – PlatformIO (alle Boards):**
+- **ESP32 dev board** (classic ESP32, e.g. ESP32-DevKitC V4) with a USB power supply, within BLE range of the car
+- **Bluetooth LE OBD2 dongle**, ELM327-compatible, e.g. vLinker MC+/FS, Veepeak BLE+, OBDLink CX or Vgate iCar Pro BLE. *Classic Bluetooth (SPP) dongles without "LE" do not work.*
+- Home Assistant with an MQTT broker (e.g. the Mosquitto add-on)
+
+## Flashing
+
+**Option A – no toolchain (classic ESP32):**
+Download `obd2mqtt-vX.Y.Z-esp32-factory.bin` from [Releases](../../releases/latest) and flash it at **address 0x0** with a web flasher in Chrome/Edge (e.g. https://espressif.github.io/esptool-js/).
+
+**Option B – PlatformIO (all boards):**
 ```bash
-pio run -e esp32dev -t upload      # klassischer ESP32
+pio run -e esp32dev -t upload      # classic ESP32
 pio run -e esp32s3 -t upload       # ESP32-S3
 pio run -e esp32c3 -t upload       # ESP32-C3
 pio device monitor
 ```
 
-Spätere Updates: Web-UI → System → Firmware-Update mit `obd2mqtt-vX.Y.Z-esp32-ota.bin` aus den Releases (nach `pio run` liegt sie automatisch unter `firmware/obd2mqtt-vX.Y.Z-<env>-ota.bin`).
+Later updates: web UI → System → Firmware update with `obd2mqtt-vX.Y.Z-esp32-ota.bin` from the releases (after `pio run` it is copied to `firmware/obd2mqtt-vX.Y.Z-<env>-ota.bin` automatically).
 
-## Ersteinrichtung
+## First setup
 
-1. Nach dem ersten Start öffnet der ESP32 das WLAN **`OBD2MQTT-xxxx`** (Passwort `obd2mqtt`). Verbinden und http://192.168.4.1 öffnen.
-2. **Einstellungen → WLAN**: SSID und Passwort eintragen, danach **MQTT**: Broker, Benutzer und Passwort.
-3. **BLE-Dongle**: Das Auto mit eingestecktem Dongle in die Nähe stellen, dann „Nach Dongles suchen“. Mit ★ markierte Einträge sind wahrscheinlich OBD-Adapter. Eintrag anklicken.
-4. „Speichern & Neustart“. Danach ist die Oberfläche unter `http://obd2mqtt.local` oder der vergebenen IP erreichbar.
-5. **Profil**: das passende Profil auswählen und „Aktivieren“. Mit „Test“ bei `soc` prüfen, ob ein Wert kommt.
+1. After the first boot the ESP32 opens the WiFi network **`OBD2MQTT-xxxx`** (password `obd2mqtt`). Connect and open http://192.168.4.1. Switch the language to English at the top right.
+2. **Settings → WiFi**: enter SSID and password, then **MQTT**: broker, user and password.
+3. **BLE dongle**: park the car with the dongle plugged in nearby, then click "Scan for dongles". Entries marked with ★ are most likely OBD adapters. Click the entry.
+4. "Save & restart". Afterwards the interface is available at `http://obd2mqtt.local` or the assigned IP address.
+5. **Profile**: select the matching profile and click "Activate". Click "Test" next to `soc` to check that a value comes back.
 
-## Profile
+## Profiles
 
-### Hyundai IONIQ 5 (auch Kia EV6 / IONIQ 6, E-GMP)
+All values of the factory profiles are enabled by default; you can switch individual values off in the profile.
 
-| ID | Header | Befehl | Formel | Bedeutung |
+### Hyundai IONIQ 5 (also Kia EV6 / IONIQ 6, E-GMP)
+
+| ID | Header | Command | Formula | Meaning |
 |---|---|---|---|---|
-| `soc` | 7E4 | 220105 | `B34/2` | Anzeige-SoC |
-| `bat_temp_max` / `bat_temp_min` | 7E4 | 220101 | `s8(B17)` / `s8(B18)` | Batterietemperatur °C |
-| `odometer` | 7C6 | 22B002 | `B9*65536+B10*256+B11` | Kilometerstand (Kombiinstrument, meist nur bei Zündung an) |
-| `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **berechnete** Reichweite |
-| `soc_bms` | 7E4 | 220101 | `B7/2` | BMS-SoC |
-| `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | State of Health |
+| `soc` | 7E4 | 220105 | `B34/2` | displayed SoC |
+| `bat_temp_max` / `bat_temp_min` | 7E4 | 220101 | `s8(B17)` / `s8(B18)` | battery temperature °C |
+| `odometer` | 7C6 | 22B002 | `B9*65536+B10*256+B11` | odometer (instrument cluster, usually only with ignition on) |
+| `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **calculated** range |
+| `soc_bms` | 7E4 | 220101 | `B7/2` | BMS SoC |
+| `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | state of health |
 
-Quellen: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
+Sources: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
 
-### XPeng G9 (auch G6/P5/P7/X9)
+### XPeng G9 (also G6/P5/P7/X9)
 
-Batteriemanagement über Header `704`, Antwort von `784` (`ATCRA784`, `ATFCSH704`, `ATFCSM1` in den Init-Befehlen).
-Die Grundlage ist das WiCAN-Profil `xpeng_g6.json`. Korrigiert habe ich es nach [XPCarData](https://github.com/stevelea/xpcardata); dort sind die Werte am G6 geprüft:
+Battery management via header `704`, response from `784` (`ATCRA784`, `ATFCSH704`, `ATFCSM1` in the init commands).
+The basis is the WiCAN profile `xpeng_g6.json`, corrected according to [XPCarData](https://github.com/stevelea/xpcardata), where the values were verified on a G6:
 
-- **SoH** liegt auf `22110A`. Bei WiCAN steht `22011A`, das ist vermutlich ein Tippfehler.
-- **Kilometerstand** besteht aus 3 Bytes, nicht 2.
-- **Reichweite** kommt direkt aus dem Batteriemanagement (`221118`). Das ist allerdings der **CLTC**-Wert, der meist 15–20 % über WLTP liegt.
+- **SoH** is at `22110A`. WiCAN lists `22011A`, which is most likely a typo.
+- **Odometer** is 3 bytes, not 2.
+- **Range** comes directly from the battery management (`221118`). Note that this is the **CLTC** value, which is usually 15–20 % above WLTP.
 
-| ID | Befehl | Formel | Bedeutung |
+| ID | Command | Formula | Meaning |
 |---|---|---|---|
-| `soc` | 221109 | `u16(B3,B4)/10` | Ladestand |
-| `bat_temp_max` / `bat_temp_min` | 221107 / 221108 | `B3-40` | Batterietemperatur °C |
-| `odometer` | 220101 | `B3*65536+B4*256+B5` | Kilometerstand |
-| `range_cltc` | 221118 | `u16(B3,B4)` | Reichweite CLTC |
-| `range_calc` | 221109 | `u16(B3,B4)/10/100*93/0.20` | berechnete Reichweite |
-| `soh` | 22110A | `u16(B3,B4)/10` | State of Health |
-| `charge_limit` | 221130 | `u16(B3,B4)-10` | Ladelimit % |
-| `charge_status` | 22112D | `B3` (0 = nein, 2/4 = DC, 3 = AC) | Ladestatus |
-| `hv_voltage` / `hv_current` | 221101 / 221103 | | HV-Spannung / -Strom |
+| `soc` | 221109 | `u16(B3,B4)/10` | state of charge |
+| `bat_temp_max` / `bat_temp_min` | 221107 / 221108 | `B3-40` | battery temperature °C |
+| `odometer` | 220101 | `B3*65536+B4*256+B5` | odometer |
+| `range_cltc` | 221118 | `u16(B3,B4)` | range (CLTC) |
+| `range_calc` | 221109 | `u16(B3,B4)/10/100*93/0.20` | calculated range |
+| `soh` | 22110A | `u16(B3,B4)/10` | state of health |
+| `charge_limit` | 221130 | `u16(B3,B4)-10` | charge limit % |
+| `charge_status` | 22112D | `B3` (0 = no, 2/4 = DC, 3 = AC) | charging status |
+| `hv_voltage` / `hv_current` | 221101 / 221103 | | HV voltage / current |
 
-**Wichtig:** Alle Werte stammen vom G6, am G9 ist nichts davon verifiziert, beim G9 MY25 erst recht nicht. Prüfe jeden Wert per Test-Button gegen die Anzeige im Auto. Kommt `NO DATA` oder eine negative Antwort (NRC 0x31), verwendet der G9 dort eine andere Adresse.
+**Important:** all values come from the G6. None of them is verified on the G9, let alone the G9 MY25. Check every value with the Test button against the display in the car. If you get `NO DATA` or a negative response (NRC 0x31), the G9 uses a different address for that value.
 
 ### XPeng G6 / P7+
 
-Eigene Profile `g6` und `p7plus` mit denselben Werten wie beim G9. Für den G6 sind sie von XPCarData verifiziert. Für den P7+ sind keine PIDs veröffentlicht, das Profil ist deshalb **experimentell**. Bitte jeden Wert mit „Test“ prüfen. Für die berechnete Reichweite Kapazität und Verbrauch an die eigene Variante anpassen.
+Separate profiles `g6` and `p7plus` with the same values as the G9. For the G6 they are verified by XPCarData. For the P7+ no PIDs have been published, so that profile is **experimental**. Please check every value with "Test". For the calculated range, adjust capacity and consumption to your variant.
 
-### Reichweite
+### Range
 
-Keines der Autos liefert die Reichweite aus dem Cockpit per OBD, weder evDash noch WiCAN noch OVMS lesen sie aus. `range_calc` schätzt sie deshalb: SoC × nutzbare Kapazität (kWh) ÷ Verbrauch (kWh/km). Trage in der Formel deine Werte ein, z. B. `…*63/0.17` für einen IONIQ 5 mit 63 kWh. Alternativ lässt sich das auch als Template-Sensor in Home Assistant rechnen.
+None of these cars report the dashboard range via OBD – neither evDash nor WiCAN nor OVMS read it. `range_calc` therefore estimates it: SoC × usable capacity (kWh) ÷ consumption (kWh/km). Put your own values into the formula, e.g. `…*63/0.17` for an IONIQ 5 with 63 kWh. Alternatively, calculate it as a template sensor in Home Assistant.
 
-### Profile aus WiCAN übernehmen
+### Converting WiCAN profiles
 
-WiCAN zählt die Bytes der rohen CAN-Frames inklusive der ISO-TP-Steuerbytes, hier werden nur die Nutzdaten gezählt:
+WiCAN counts the bytes of the raw CAN frames including the ISO-TP control bytes; here only the payload is counted:
 
-- Antwort in einem Frame: unser `B` = WiCAN `B` − 1
-- Antwort über mehrere Frames: WiCAN `B2…B7` → unser `B0…B5`; danach: WiCAN `B9…B15` → `B6…B12`, `B17…B23` → `B13…B19` usw. (jedes 8. Byte fällt weg)
-- WiCAN `S21` (signed) → `s8(B17)`, `[B19:B20]` → `u16(..)`, `B15:7` (Bit) → `bit(B12,7)`
+- Single-frame response: our `B` = WiCAN `B` − 1
+- Multi-frame response: WiCAN `B2…B7` → our `B0…B5`; then WiCAN `B9…B15` → `B6…B12`, `B17…B23` → `B13…B19` etc. (every 8th byte is dropped)
+- WiCAN `S21` (signed) → `s8(B17)`, `[B19:B20]` → `u16(..)`, `B15:7` (bit) → `bit(B12,7)`
 
-### Eigene PIDs hinzufügen
+### Adding your own PIDs
 
-1. Profil → „+ PID“, dann Header, Befehl und eine erste Formel (z. B. `B3`) eintragen.
-2. „Test“ drücken. Die Bytes erscheinen mit Index (B0, B1, …). `B0` ist immer das Service-Byte der Antwort, also 0x62 bei Mode 22 bzw. 0x41 bei Mode 01.
-3. Die Formel anpassen, bis der Wert plausibel ist. Min/Max dienen als Plausibilitätsfilter, damit Ausreißer verworfen werden.
-4. Häkchen bei „Aktiv“ setzen und „Profil speichern“. Home Assistant legt den Sensor automatisch an.
+1. Profile → "+ PID", then enter header, command and a first formula (e.g. `B3`).
+2. Click "Test". The bytes are shown with their index (B0, B1, …). `B0` is always the service byte of the response, i.e. 0x62 for mode 22 or 0x41 for mode 01.
+3. Adjust the formula until the value is plausible. Min/max act as a plausibility filter so outliers are discarded.
+4. Tick "Active" and click "Save profile". Home Assistant creates the sensor automatically.
 
-## Watchdog & sicherer Modus
+## Watchdog & safe mode
 
-- **Hänger:** Reagiert die Hauptschleife länger als 60 s nicht, startet der ESP32 automatisch neu.
-- **Verbindung:** Ist das WLAN 15 min oder MQTT 20 min weg, startet er ebenfalls neu. Ausnahme: Jemand ist gerade mit dem Setup-WLAN verbunden.
-- **Sicherer Modus:** Nach **3 Abstürzen bzw. Watchdog-Resets in Folge** startet die Firmware ohne Bluetooth und Abfragen. Die Weboberfläche bleibt erreichbar, und die Status-Seite zeigt einen roten Hinweis. Wenn du Profil bzw. Einstellungen korrigiert hast, führt „Normal neu starten“ zurück in den Normalbetrieb. Nach 3 min stabilem Betrieb setzt sich der Zähler zurück, ebenso durch Aus- und Einschalten.
-- Unter *System* steht der Grund des letzten Neustarts, z. B. „Task-Watchdog (Firmware hing)“ oder „Unterspannung“.
+- **Hang:** if the main loop doesn't respond for more than 60 s, the ESP32 restarts automatically.
+- **Connectivity:** if WiFi is gone for 15 min or MQTT for 20 min, it restarts as well – unless someone is connected to the setup WiFi.
+- **Safe mode:** after **3 crashes or watchdog resets in a row** the firmware starts without Bluetooth and polling. The web interface stays reachable and the status page shows a red notice. Once you have fixed the profile or settings, "Restart normally" returns to normal operation. The counter resets after 3 min of stable operation or a power cycle.
+- *System* shows the reason for the last restart, e.g. "Task watchdog (firmware hung)" or "Brownout".
 
 ## MQTT
 
-| Topic | Inhalt |
+| Topic | Content |
 |---|---|
-| `obd2mqtt/<pid-id>` | Messwert (retained), z. B. `obd2mqtt/soc` → `54.5` |
-| `obd2mqtt/voltage_12v` | 12-V-Spannung am Dongle |
-| `obd2mqtt/car` | `online` / `offline` – Dongle erreichbar |
-| `obd2mqtt/ble_rssi` | BLE-Signalstärke |
-| `obd2mqtt/last_error` | letzter Fehler |
-| `obd2mqtt/status` | `online` / `offline` (Last Will der Bridge) |
-| `obd2mqtt/profile` | Name des aktiven Fahrzeugprofils, z. B. `XPeng G9` (retained) |
-| `obd2mqtt/profile/attributes` | Details als JSON: `{"id":"g9","name":"XPeng G9","model":"…","active_pids":[…],"firmware":"…"}` |
-| `obd2mqtt/state` | Alle aktuellen Werte inkl. Profil als **ein** JSON, nach jedem Abfragezyklus: `{"profile":"XPeng G9","profile_id":"g9","time":"…","values":{"soc":71.5,…},"voltage_12v":12.6}` |
+| `obd2mqtt/<pid-id>` | measured value (retained), e.g. `obd2mqtt/soc` → `54.5` |
+| `obd2mqtt/voltage_12v` | 12 V voltage measured at the dongle |
+| `obd2mqtt/car` | `online` / `offline` – dongle reachable |
+| `obd2mqtt/ble_rssi` | BLE signal strength |
+| `obd2mqtt/last_error` | last error |
+| `obd2mqtt/status` | `online` / `offline` (last will of the bridge) |
+| `obd2mqtt/profile` | name of the active vehicle profile, e.g. `XPeng G9` (retained) |
+| `obd2mqtt/profile/attributes` | details as JSON: `{"id":"g9","name":"XPeng G9","model":"…","active_pids":[…],"firmware":"…"}` |
+| `obd2mqtt/state` | all current values incl. profile as **one** JSON after every poll cycle: `{"profile":"XPeng G9","profile_id":"g9","time":"…","values":{"soc":71.5,…},"voltage_12v":12.6}` |
 
-Discovery läuft unter `homeassistant/sensor/obd2mqtt_xxxxxx/<id>/config`.
+Discovery is published under `homeassistant/sensor/obd2mqtt_xxxxxx/<id>/config`.
 
-## Hinweise
+## Notes
 
-- **12-V-Batterie**: Standardmäßig wird nur alle 120 s abgefragt, BLE dazwischen getrennt und unter 12,2 V pausiert. Wenn das Auto nicht antwortet (es schläft), wartet die Bridge 10 min. Einen Dongle mit Auto-Sleep verwenden (z. B. Vgate iCar Pro BLE, vLinker MC+/FS BLE, OBDLink CX).
-- **Wann antwortet das Auto?** Beim IONIQ 5 antwortet das BMS meist nur bei Zündung an oder während des Ladens. Im Schlaf kommt `NO DATA`. Der letzte Wert bleibt in Home Assistant erhalten (retained).
-- Nur **BLE**-Dongles (Bluetooth 4.0+) werden unterstützt, keine Bluetooth-Classic-Adapter (SPP).
-- Befehle werden mit `ATH0`/`ATS0`/`ATCAF1` erwartet (in den Init-Befehlen gesetzt).
+- **12 V battery:** by default the car is polled only every 120 s, BLE is disconnected in between and polling pauses below 12.2 V. If the car doesn't respond (it's asleep), the bridge waits 10 min. Use a dongle with auto-sleep (e.g. Vgate iCar Pro BLE, vLinker MC+/FS BLE, OBDLink CX).
+- **When does the car respond?** On the IONIQ 5 the BMS usually only responds with ignition on or while charging. While asleep you get `NO DATA`. The last value is kept in Home Assistant (retained).
+- Only **BLE** dongles (Bluetooth 4.0+) are supported, no Bluetooth Classic adapters (SPP).
+- Commands expect `ATH0`/`ATS0`/`ATCAF1` (set in the init commands).
 
-## Projektstruktur
+## Project structure
 
 ```
-platformio.ini          Build-Konfiguration (esp32dev / esp32s3 / esp32c3)
-src/main.cpp            WLAN, Setup-AP, mDNS, Hauptschleife
-src/elm_ble.*           BLE-Verbindung, UUID-Erkennung, ELM-Befehle, Scan
-src/obd_parse.*         Antwort-Parser (Single/Multi-Frame) und Formel-Auswertung
-src/poller.*            Abfrage-Scheduler, 12-V-Schutz, Jobs aus der Web-UI
-src/mqtt_ha.*           MQTT und Home-Assistant-Discovery
-src/web.*, web_ui.h     REST-API und Weboberfläche
-src/config.*            Konfiguration und Profile (LittleFS)
-src/default_profiles.h  Werksprofile IONIQ 5, G6, G9, P7+
-lib/tinyexpr            Formel-Parser (zlib-Lizenz, codeplea/tinyexpr)
+platformio.ini          build configuration (esp32dev / esp32s3 / esp32c3)
+src/main.cpp            WiFi, setup AP, mDNS, main loop
+src/elm_ble.*           BLE connection, UUID detection, ELM commands, scan
+src/obd_parse.*         response parser (single/multi-frame) and formula evaluation
+src/poller.*            poll scheduler, 12 V protection, jobs from the web UI
+src/mqtt_ha.*           MQTT and Home Assistant discovery
+src/web.*, web_ui.h     REST API and web interface
+src/help_ui.h           built-in manual (DE/EN)
+src/config.*            configuration and profiles (LittleFS)
+src/default_profiles.h  factory profiles IONIQ 5, G6, G9, P7+
+lib/tinyexpr            formula parser (zlib license, codeplea/tinyexpr)
+changelog.json          changelog source → tools/gen_changelog.py → CHANGELOG*.md + web UI
 ```
 
-## Haftungsausschluss
+## Disclaimer
 
-Privates Hobbyprojekt, Beta-Software, Nutzung **auf eigene Gefahr**. Keine Gewährleistung oder Haftung für Schäden an Fahrzeug, 12-V-Batterie, Dongle oder sonstiger Hardware, soweit gesetzlich zulässig. Die Werksprofile senden nur Diagnose-**Lese**anfragen (UDS 0x22 / OBD2 Mode 01); über das Terminal lassen sich aber beliebige Befehle senden – auf eigene Verantwortung. Werte ohne Gewähr, maßgeblich ist die Anzeige im Fahrzeug. Ein dauerhaft gesteckter Dongle verbraucht Strom; bei längerer Standzeit abziehen.
+Private hobby project, beta software, use **at your own risk**. No warranty or liability for damage to the vehicle, 12 V battery, dongle or other hardware, to the extent permitted by law. The factory profiles only send diagnostic **read** requests (UDS 0x22 / OBD2 mode 01); the terminal, however, can send arbitrary commands – at your own responsibility. Values without guarantee; the display in the vehicle is always authoritative. A permanently plugged-in dongle draws power; unplug it if the car is parked for a longer time.
 
-Keine Verbindung zu XPeng, Hyundai, Kia, MeatPi oder Dongle-Herstellern. Marken- und Produktnamen gehören ihren Inhabern und dienen nur der Beschreibung.
+Not affiliated with XPeng, Hyundai, Kia, MeatPi or any dongle manufacturer. Brand and product names belong to their respective owners and are used for descriptive purposes only.
 
-Die Firmware ist mit KI-Unterstützung entstanden.
+This firmware was developed with AI assistance.
 
-## Danke
+## Thanks
 
-[evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw), [XPCarData](https://github.com/stevelea/xpcardata), OVMS, xpeng-wican-evcc und die Community im ABRP-Feedbackboard und in den Foren.
+[evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw), [XPCarData](https://github.com/stevelea/xpcardata), OVMS, xpeng-wican-evcc and the community on the ABRP feedback board and in the forums.
 
-## Lizenz
+## License
 
-[MIT](LICENSE). Verwendete Bibliotheken unterliegen ihren eigenen Lizenzen: NimBLE-Arduino (Apache 2.0), ESPAsyncWebServer / AsyncTCP (LGPL 3.0), ArduinoJson (MIT), PubSubClient (MIT), tinyexpr (zlib, liegt unter `lib/tinyexpr`).
+[MIT](LICENSE). Bundled/used libraries are subject to their own licenses: NimBLE-Arduino (Apache 2.0), ESPAsyncWebServer / AsyncTCP (LGPL 3.0), ArduinoJson (MIT), PubSubClient (MIT), tinyexpr (zlib, included in `lib/tinyexpr`).
