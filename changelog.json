@@ -1,0 +1,241 @@
+[
+ {
+  "v": "0.3.5",
+  "de": [
+   "MQTT: aktives Fahrzeugprofil unter <base>/profile (+ Details als JSON unter <base>/profile/attributes), in Home Assistant als Sensor „Fahrzeugprofil“",
+   "MQTT: alle Werte inkl. Profil und Zeitstempel als ein JSON unter <base>/state nach jedem Abfragezyklus"
+  ],
+  "en": [
+   "MQTT: active vehicle profile at <base>/profile (+ details as JSON at <base>/profile/attributes), in Home Assistant as sensor “Vehicle profile”",
+   "MQTT: all values including profile and timestamp as one JSON at <base>/state after each poll cycle"
+  ]
+ },
+ {
+  "v": "0.3.4",
+  "de": [
+   "Zeitzone als verständliche Auswahlliste (z. B. „Mitteleuropa – Deutschland, Österreich, Schweiz …“) statt POSIX-Angabe; eigene Angabe weiterhin möglich",
+   "Aktuelle Uhrzeit am Gerät wird unter der Zeitzone angezeigt",
+   "Dongle wird mit Namen angezeigt: Bluetooth-Name, erkannter Typ und ELM-Version (z. B. „vLinker MC · vLinker / iOS-Vlink · ELM327 v2.2“), auch im Status und im Log"
+  ],
+  "en": [
+   "Time zone as an understandable selection list (e.g. “Central Europe – Germany, Austria, Switzerland …”) instead of a POSIX string; a custom value is still possible",
+   "Current time on the device is shown below the time zone",
+   "Dongle is shown with its name: Bluetooth name, detected type and ELM version (e.g. “vLinker MC · vLinker / iOS-Vlink · ELM327 v2.2”), also in the status and in the log"
+  ]
+ },
+ {
+  "v": "0.3.3",
+  "de": [
+   "Profilauswahl zeigt sprechende Namen statt Dateinamen (z. B. „Hyundai IONIQ 5 / Kia EV6“, „XPeng G9“), sortiert, aktives Profil mit ✓",
+   "„Kopie speichern“ fragt nur noch nach einem Namen – der interne Dateiname wird automatisch erzeugt",
+   "Werksprofile umbenannt: „Hyundai IONIQ 5 / Kia EV6“, „XPeng P7+ (experimentell)“"
+  ],
+  "en": [
+   "Profile selection shows readable names instead of file names (e.g. “Hyundai IONIQ 5 / Kia EV6”, “XPeng G9”), sorted, active profile marked with ✓",
+   "“Save copy” only asks for a name – the internal file name is generated automatically",
+   "Factory profiles renamed: “Hyundai IONIQ 5 / Kia EV6”, “XPeng P7+ (experimental)”"
+  ]
+ },
+ {
+  "v": "0.3.2",
+  "de": [
+   "Werksprofile: alle Werte standardmäßig aktiviert (IONIQ 5, G9, G6, P7+)",
+   "Profil-Tabelle: Häkchen im Spaltenkopf „Aktiv“ schaltet alle Werte an/aus"
+  ],
+  "en": [
+   "Factory profiles: all values enabled by default (IONIQ 5, G9, G6, P7+)",
+   "Profile table: checkbox in the “Active” column header switches all values on/off"
+  ]
+ },
+ {
+  "v": "0.3.1",
+  "de": [
+   "Neue Werksprofile: XPeng G6 und XPeng P7+ (P7+ experimentell)",
+   "Bestehende Geräte erhalten die neuen Profile automatisch nach dem Update"
+  ],
+  "en": [
+   "New factory profiles: XPeng G6 and XPeng P7+ (P7+ experimental)",
+   "Existing devices get the new profiles automatically after the update"
+  ]
+ },
+ {
+  "v": "0.3.0",
+  "de": [
+   "Komplette Oberfläche, Gerätemeldungen und Handbuch auf Deutsch und Englisch – Sprachwahl oben rechts",
+   "Sprache wird im Gerät gespeichert; Log, Fehlermeldungen und Home-Assistant-Namen folgen der Auswahl",
+   "Werksprofile mit deutschen bzw. englischen Wertenamen",
+   "Changelog zweisprachig (CHANGELOG.md / CHANGELOG.en.md)"
+  ],
+  "en": [
+   "Complete interface, device messages and manual in German and English – language selector at the top right",
+   "Language is stored on the device; log, error messages and Home Assistant names follow the selection",
+   "Factory profiles with German or English value names",
+   "Bilingual changelog (CHANGELOG.md / CHANGELOG.en.md)"
+  ]
+ },
+ {
+  "v": "0.2.5",
+  "de": [
+   "Einstellungen und Profile sichern (JSON-Datei, wahlweise inkl. Passwörter)",
+   "Sicherung wiederherstellen – Einstellungen und/oder Profile, danach automatischer Neustart"
+  ],
+  "en": [
+   "Back up settings and profiles (JSON file, optionally including passwords)",
+   "Restore a backup – settings and/or profiles, followed by an automatic restart"
+  ]
+ },
+ {
+  "v": "0.2.4",
+  "de": [
+   "Benutzerhandbuch direkt im Gerät (Link „Hilfe“ oben rechts bzw. /hilfe)",
+   "Handbuch mit Suchfeld und Live-Prüfung des eigenen Systems mit Links zur passenden Hilfe"
+  ],
+  "en": [
+   "User manual built into the device (link “Help” at the top right or /hilfe)",
+   "Manual with search box and live check of your own system with links to the matching help"
+  ]
+ },
+ {
+  "v": "0.2.3",
+  "de": [
+   "Log mit echter Uhrzeit (NTP, Zeitzone einstellbar; vor der Synchronisation Laufzeit „+hh:mm:ss“)",
+   "Log dauerhaft im Flash speichern (übersteht Neustarts, rotiert bei 48 KB), abschaltbar",
+   "Log: Kopieren, Herunterladen, älteres Log herunterladen, Löschen",
+   "Changelog im System-Tab"
+  ],
+  "en": [
+   "Log with real time of day (NTP, configurable time zone; before sync the uptime “+hh:mm:ss”)",
+   "Store log permanently in flash (survives restarts, rotates at 48 KB), can be disabled",
+   "Log: copy, download, download older log, clear",
+   "Changelog in the System tab"
+  ]
+ },
+ {
+  "v": "0.2.2",
+  "de": [
+   "Aufwärmphase nach Dongle-Reset (ATRV + Pause) – behebt CAN ERROR beim Test-Button",
+   "Einmalige Wiederholung bei CAN ERROR",
+   "BLE bleibt nach Test/Terminal 60 s verbunden"
+  ],
+  "en": [
+   "Warm-up after dongle reset (ATRV + pause) – fixes CAN ERROR on the Test button",
+   "Single retry on CAN ERROR",
+   "BLE stays connected for 60 s after Test/Terminal"
+  ]
+ },
+ {
+  "v": "0.2.1",
+  "de": [
+   "Verspätete ELM-Prompts („>“) werden ignoriert – behebt abgeschnittene Antworten",
+   "Vor jedem Befehl warten, bis der Dongle still ist",
+   "Bis zu 2 Wiederholungen bei unvollständiger Antwort, Rohantwort im Log"
+  ],
+  "en": [
+   "Late ELM prompts (“>”) are ignored – fixes truncated responses",
+   "Wait until the dongle is quiet before each command",
+   "Up to 2 retries on incomplete responses, raw response in the log"
+  ]
+ },
+ {
+  "v": "0.2.0",
+  "de": [
+   "Watchdog: Hänger > 60 s, WLAN 15 min bzw. MQTT 20 min weg → Neustart",
+   "Sicherer Modus nach 3 Abstürzen in Folge (ohne BLE, Web-UI erreichbar)",
+   "Grund des letzten Neustarts im System-Tab"
+  ],
+  "en": [
+   "Watchdog: hang > 60 s, WiFi 15 min or MQTT 20 min down → restart",
+   "Safe mode after 3 crashes in a row (no BLE, web UI reachable)",
+   "Reason of the last restart in the System tab"
+  ]
+ },
+ {
+  "v": "0.1.10",
+  "de": [
+   "Fix: „Werksprofile wiederherstellen“ und „Profil löschen“ meldeten „Ungültiger Profilname“"
+  ],
+  "en": [
+   "Fix: “Restore factory profiles” and “Delete profile” reported “Invalid profile name”"
+  ]
+ },
+ {
+  "v": "0.1.9",
+  "de": [
+   "Unvollständige Multi-Frame-Antworten werden erkannt und wiederholt",
+   "IONIQ 5: Init-Befehl ATST96 (längerer Timeout)",
+   "Klarere Log-Meldung bei planmäßiger BLE-Trennung"
+  ],
+  "en": [
+   "Incomplete multi-frame responses are detected and retried",
+   "IONIQ 5: init command ATST96 (longer timeout)",
+   "Clearer log message for scheduled BLE disconnects"
+  ]
+ },
+ {
+  "v": "0.1.8",
+  "de": [
+   "Status-LED entfernt (ESP32-DevKitC V4 hat keine steuerbare LED)"
+  ],
+  "en": [
+   "Status LED removed (ESP32-DevKitC V4 has no controllable LED)"
+  ]
+ },
+ {
+  "v": "0.1.7",
+  "de": [
+   "Firmware-Update mit echtem Fortschritt, Fehlermeldungen und Warten auf Neustart",
+   "Prüfung auf factory.bin, BLE-Abfragen pausieren während des Updates"
+  ],
+  "en": [
+   "Firmware update with real progress, error messages and waiting for the restart",
+   "Check for factory.bin, BLE polling pauses during the update"
+  ]
+ },
+ {
+  "v": "0.1.5 – 0.1.6",
+  "de": [
+   "Versionsnummer im Dateinamen und in der Weboberfläche",
+   "LED-Test (später entfernt)"
+  ],
+  "en": [
+   "Version number in the file name and in the web interface",
+   "LED test (removed later)"
+  ]
+ },
+ {
+  "v": "0.1.4",
+  "de": [
+   "XPeng G9: SoH 22110A, Kilometerstand 3 Bytes, CLTC-Reichweite 221118, Ladelimit/Ladestatus"
+  ],
+  "en": [
+   "XPeng G9: SoH 22110A, odometer 3 bytes, CLTC range 221118, charge limit/charge status"
+  ]
+ },
+ {
+  "v": "0.1.3",
+  "de": [
+   "Batterietemperatur, Kilometerstand, berechnete Reichweite; G9-Profil nach WiCAN"
+  ],
+  "en": [
+   "Battery temperature, odometer, calculated range; G9 profile based on WiCAN"
+  ]
+ },
+ {
+  "v": "0.1.1",
+  "de": [
+   "WLAN-Suche in den Einstellungen"
+  ],
+  "en": [
+   "WiFi scan in the settings"
+  ]
+ },
+ {
+  "v": "0.1.0",
+  "de": [
+   "Erste Version: BLE-ELM327 → MQTT mit Home-Assistant-Discovery, Weboberfläche, Profile, Test, Terminal, OTA"
+  ],
+  "en": [
+   "First version: BLE ELM327 → MQTT with Home Assistant discovery, web interface, profiles, test, terminal, OTA"
+  ]
+ }
+]
