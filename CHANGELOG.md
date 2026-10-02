@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.7
+- Einstellungen → WLAN: IP-Adresse automatisch (DHCP) oder fest (IP, Subnetzmaske, Gateway, DNS); Knopf „Aktuelle Werte übernehmen“
+- Fallback: Funktioniert die feste IP beim Start nicht (keine WLAN-Verbindung oder MQTT-Broker nicht erreichbar), holt sich die Bridge automatisch eine Adresse per DHCP – Hinweis im Log, unter System und in den Einstellungen
+- Ungültige Angaben (z. B. Gateway nicht im Subnetz) werden schon beim Speichern bzw. beim Start erkannt
+
 ## 0.3.6
 - Fix: Absturzschleife durch volles Dateisystem – die Log-Dateien konnten zusammen ~96 KB von 128 KB belegen; jetzt max. 2 × 16 KB, und das Log belegt nie mehr als 70 % des Flash (Profile/Einstellungen haben Vorrang)
 - Fix: Log-Dateien werden nur noch unter Sperre gelesen/geschrieben – Herunterladen konnte mit dem gleichzeitigen Schreiben/Rotieren kollidieren

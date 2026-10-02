@@ -49,6 +49,12 @@ void configToJson(JsonDocument& d, bool mask) {
   d["wifi_pass"] = secret(cfg.wifiPass);
   d["hostname"] = cfg.hostname;
   d["web_pass"] = secret(cfg.webPass);
+  d["ip_mode"] = cfg.ipMode;
+  d["ip_addr"] = cfg.ipAddr;
+  d["ip_mask"] = cfg.ipMask;
+  d["ip_gw"] = cfg.ipGw;
+  d["ip_dns1"] = cfg.ipDns1;
+  d["ip_dns2"] = cfg.ipDns2;
   d["mqtt_host"] = cfg.mqttHost;
   d["mqtt_port"] = cfg.mqttPort;
   d["mqtt_user"] = cfg.mqttUser;
@@ -86,6 +92,14 @@ void configFromJson(JsonVariantConst s) {
   str("wifi_pass", cfg.wifiPass, true);
   str("hostname", cfg.hostname);
   str("web_pass", cfg.webPass, true);
+  str("ip_mode", cfg.ipMode);
+  if (cfg.ipMode != "static") cfg.ipMode = "dhcp";
+  str("ip_addr", cfg.ipAddr);
+  str("ip_mask", cfg.ipMask);
+  if (cfg.ipMask.isEmpty()) cfg.ipMask = "255.255.255.0";
+  str("ip_gw", cfg.ipGw);
+  str("ip_dns1", cfg.ipDns1);
+  str("ip_dns2", cfg.ipDns2);
   str("mqtt_host", cfg.mqttHost);
   if (s["mqtt_port"].is<int>()) cfg.mqttPort = s["mqtt_port"];
   str("mqtt_user", cfg.mqttUser);

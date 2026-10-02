@@ -37,18 +37,67 @@ static void stopAP() {
   logf("%s", T("Access Point beendet", "Access point stopped"));
 }
 
+bool g_ipFallback = false;   // feste IP eingestellt, aber DHCP-Fallback aktiv
+
+// Feste IP aus der Konfiguration anwenden; false = ungültig/abgeschaltet → DHCP
+static bool applyStaticIp() {
+  if (cfg.ipMode != "static") return false;
+  IPAddress ip, gw, mask, d1, d2;
+  if (!ip.fromString(cfg.ipAddr) || !gw.fromString(cfg.ipGw) || !mask.fromString(cfg.ipMask)) {
+    logf("%s", T("Feste IP: Angaben unvollständig/ungültig – verwende DHCP", "Static IP: settings incomplete/invalid – using DHCP"));
+    return false;
+  }
+  if (((uint32_t)ip & (uint32_t)mask) != ((uint32_t)gw & (uint32_t)mask)) {
+    logf("%s", T("Feste IP: Gateway liegt nicht im Subnetz – verwende DHCP", "Static IP: gateway not in subnet – using DHCP"));
+    return false;
+  }
+  if (!d1.fromString(cfg.ipDns1)) d1 = gw;
+  if (!d2.fromString(cfg.ipDns2)) d2 = IPAddress((uint32_t)0);
+  return WiFi.config(ip, gw, mask, d1, d2);
+}
+
+static bool waitConnected(uint32_t ms) {
+  uint32_t t0 = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - t0 < ms) delay(200);
+  return WiFi.status() == WL_CONNECTED;
+}
+
+// Mit fester IP ist "verbunden" nur die Funkverbindung. Prüfen, ob das Netz wirklich passt:
+// MQTT-Broker per TCP erreichbar (inkl. DNS, falls Hostname). Ohne Broker: kein Test möglich → ok.
+static bool networkWorks() {
+  if (cfg.mqttHost.isEmpty()) return true;
+  for (int i = 0; i < 3; i++) {
+    WiFiClient c;
+    if (c.connect(cfg.mqttHost.c_str(), cfg.mqttPort, 3000)) { c.stop(); return true; }
+    delay(1000);
+  }
+  return false;
+}
+
 static void wifiBegin() {
   WiFi.persistent(false);
   WiFi.setHostname(cfg.hostname.c_str());
   if (cfg.wifiSsid.isEmpty()) { startAP(); return; }
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  bool useStatic = applyStaticIp();
   WiFi.begin(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str());
-  logf(T("Verbinde mit WLAN '%s'…", "Connecting to WiFi '%s'…"), cfg.wifiSsid.c_str());
-  uint32_t t0 = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - t0 < 20000) delay(200);
-  if (WiFi.status() == WL_CONNECTED) {
-    logf(T("WLAN verbunden, IP %s", "WiFi connected, IP %s"), WiFi.localIP().toString().c_str());
+  logf(T("Verbinde mit WLAN '%s' (%s)…", "Connecting to WiFi '%s' (%s)…"), cfg.wifiSsid.c_str(),
+       useStatic ? (String(T("feste IP ", "static IP ")) + cfg.ipAddr).c_str() : "DHCP");
+  bool ok = waitConnected(20000);
+  if (useStatic && (!ok || !networkWorks())) {
+    logf(T("Feste IP %s funktioniert nicht (%s) – Fallback auf DHCP", "Static IP %s does not work (%s) – falling back to DHCP"),
+         cfg.ipAddr.c_str(), ok ? T("MQTT-Broker nicht erreichbar", "MQTT broker not reachable") : T("keine WLAN-Verbindung", "no WiFi connection"));
+    g_ipFallback = true;
+    WiFi.disconnect(false, false);
+    delay(200);
+    WiFi.config(IPAddress((uint32_t)0), IPAddress((uint32_t)0), IPAddress((uint32_t)0));   // 0.0.0.0 = DHCP
+    WiFi.begin(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str());
+    ok = waitConnected(20000);
+  }
+  if (ok) {
+    logf(T("WLAN verbunden, IP %s%s", "WiFi connected, IP %s%s"), WiFi.localIP().toString().c_str(),
+         g_ipFallback ? T(" (DHCP-Fallback)", " (DHCP fallback)") : (useStatic ? T(" (fest)", " (static)") : " (DHCP)"));
     staConnectedSince = millis();
   } else {
     logf("%s", T("WLAN nicht erreichbar – starte Setup-AP", "WiFi not reachable – starting setup AP"));

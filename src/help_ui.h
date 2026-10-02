@@ -140,6 +140,7 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <tr><td>Neuer Verbindungsversuch nach</td><td>Wartezeit, wenn der Dongle nicht erreichbar ist (Auto weg).</td><td>60 s</td></tr>
 <tr><td>Pause wenn Auto nicht antwortet</td><td>Wartezeit, wenn das Auto schläft.</td><td>600 s</td></tr>
 <tr><td>BLE-Verbindung dauerhaft halten</td><td>„nein“ = Dongle darf zwischen den Abfragen schlafen (empfohlen).</td><td>nein</td></tr>
+<tr><td>IP-Adresse</td><td>„automatisch (DHCP)“ oder eine feste Adresse. Mit „Aktuelle Werte übernehmen“ werden IP, Maske, Gateway und DNS der laufenden Verbindung eingetragen. Die Adresse muss außerhalb des DHCP-Bereichs des Routers liegen. Klappt die feste IP nach dem Neustart nicht (kein WLAN oder MQTT-Broker nicht erreichbar), nimmt die Bridge automatisch DHCP und meldet das im Log und unter System.</td><td>DHCP</td></tr>
 <tr><td>Web-Passwort</td><td>Schützt die Oberfläche. Anmeldung mit Benutzer <code>admin</code>.</td><td>leer</td></tr>
 <tr><td>Zeitzone</td><td>Für die Uhrzeit im Log. Aus der Liste wählen; darunter wird die aktuelle Uhrzeit am Gerät angezeigt.</td><td>Mitteleuropa</td></tr>
 <tr><td>Log dauerhaft speichern</td><td>Log übersteht Neustarts – hilfreich bei der Fehlersuche.</td><td>ja</td></tr>
@@ -440,6 +441,7 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <tr><td>Reconnect attempt after</td><td>Waiting time if the dongle is not reachable (car away).</td><td>60 s</td></tr>
 <tr><td>Pause when car does not respond</td><td>Waiting time if the car is asleep.</td><td>600 s</td></tr>
 <tr><td>Keep BLE connected permanently</td><td>“no” = dongle may sleep between polls (recommended).</td><td>no</td></tr>
+<tr><td>IP address</td><td>“automatic (DHCP)” or a static address. “Use current values” fills in IP, mask, gateway and DNS of the running connection. The address must be outside the router's DHCP range. If the static IP does not work after the restart (no WiFi or MQTT broker not reachable), the bridge automatically uses DHCP and reports this in the log and under System.</td><td>DHCP</td></tr>
 <tr><td>Web password</td><td>Protects the interface. Log in with user <code>admin</code>.</td><td>empty</td></tr>
 <tr><td>Time zone</td><td>For the time in the log. Choose from the list; the current time on the device is shown below.</td><td>Central Europe</td></tr>
 <tr><td>Store log permanently</td><td>Log survives restarts – helpful for troubleshooting.</td><td>yes</td></tr>

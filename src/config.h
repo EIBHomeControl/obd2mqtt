@@ -10,6 +10,8 @@ struct AppConfig {
   String wifiSsid, wifiPass;
   String hostname = "obd2mqtt";
   String webPass;                       // leer = keine Anmeldung (User: admin)
+  String ipMode = "dhcp";               // dhcp | static (bei Fehler Fallback auf DHCP)
+  String ipAddr, ipGw, ipMask = "255.255.255.0", ipDns1, ipDns2;
 
   // MQTT
   String mqttHost;
@@ -57,6 +59,7 @@ struct Profile {
 };
 
 extern AppConfig cfg;
+extern bool g_ipFallback;          // feste IP fehlgeschlagen → DHCP aktiv (main.cpp)
 extern Profile profile;
 
 bool fsBegin();

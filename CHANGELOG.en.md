@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.7
+- Settings → WiFi: IP address automatic (DHCP) or static (IP, subnet mask, gateway, DNS); button “Use current values”
+- Fallback: if the static IP does not work at startup (no WiFi connection or MQTT broker not reachable), the bridge automatically gets an address via DHCP – shown in the log, under System and in the settings
+- Invalid entries (e.g. gateway not in subnet) are detected when saving or at startup
+
 ## 0.3.6
 - Fix: crash loop caused by a full file system – the log files could use ~96 KB of 128 KB; now max. 2 × 16 KB, and the log never uses more than 70 % of the flash (profiles/settings take priority)
 - Fix: log files are only read/written under a lock – downloading could collide with simultaneous writing/rotation

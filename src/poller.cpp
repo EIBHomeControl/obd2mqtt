@@ -491,6 +491,10 @@ void statusJson(JsonDocument& d) {
   d["wifi"]["ssid"] = WiFi.SSID();
   d["wifi"]["ip"] = WiFi.localIP().toString();
   d["wifi"]["rssi"] = WiFi.RSSI();
+  d["wifi"]["gw"] = WiFi.gatewayIP().toString();
+  d["wifi"]["mask"] = WiFi.subnetMask().toString();
+  d["wifi"]["dns"] = WiFi.dnsIP(0).toString();
+  d["wifi"]["ip_mode"] = g_ipFallback ? "fallback" : cfg.ipMode;
   d["mqtt"] = cacheMqtt;
   d["ble"]["connected"] = cacheBle;
   d["ble"]["mac"] = cfg.bleMac;

@@ -1,5 +1,18 @@
 [
  {
+  "v": "0.3.7",
+  "de": [
+   "Einstellungen → WLAN: IP-Adresse automatisch (DHCP) oder fest (IP, Subnetzmaske, Gateway, DNS); Knopf „Aktuelle Werte übernehmen“",
+   "Fallback: Funktioniert die feste IP beim Start nicht (keine WLAN-Verbindung oder MQTT-Broker nicht erreichbar), holt sich die Bridge automatisch eine Adresse per DHCP – Hinweis im Log, unter System und in den Einstellungen",
+   "Ungültige Angaben (z. B. Gateway nicht im Subnetz) werden schon beim Speichern bzw. beim Start erkannt"
+  ],
+  "en": [
+   "Settings → WiFi: IP address automatic (DHCP) or static (IP, subnet mask, gateway, DNS); button “Use current values”",
+   "Fallback: if the static IP does not work at startup (no WiFi connection or MQTT broker not reachable), the bridge automatically gets an address via DHCP – shown in the log, under System and in the settings",
+   "Invalid entries (e.g. gateway not in subnet) are detected when saving or at startup"
+  ]
+ },
+ {
   "v": "0.3.6",
   "de": [
    "Fix: Absturzschleife durch volles Dateisystem – die Log-Dateien konnten zusammen ~96 KB von 128 KB belegen; jetzt max. 2 × 16 KB, und das Log belegt nie mehr als 70 % des Flash (Profile/Einstellungen haben Vorrang)",
