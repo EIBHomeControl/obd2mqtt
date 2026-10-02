@@ -1,3 +1,4 @@
+#include <LittleFS.h>
 #include "poller.h"
 #include <WiFi.h>
 #include <vector>
@@ -443,7 +444,7 @@ void setPaused(bool p) {
 }
 
 void loop() {
-  if (!bleOn) { applyPendingConfig(); if (flagProfileReload) { flagProfileReload = false; reloadProfile(); } return; }
+  if (!bleOn) { applyPendingConfig(); if (flagProfileReload) { flagProfileReload = false; reloadProfile(); } updateCache(); return; }
   if (paused) { if (ElmBle::connected()) { ElmBle::disconnect(); elmReady = false; } updateCache(); return; }
   applyPendingConfig();
   if (flagProfileReload) { flagProfileReload = false; reloadProfile(); }
@@ -482,6 +483,10 @@ void statusJson(JsonDocument& d) {
   d["fw"] = FW_VERSION;
   d["uptime"] = now / 1000;
   d["heap"] = ESP.getFreeHeap();
+  d["heap_min"] = ESP.getMinFreeHeap();
+  d["heap_block"] = ESP.getMaxAllocHeap();
+  d["fs_used"] = LittleFS.usedBytes();
+  d["fs_total"] = LittleFS.totalBytes();
   d["wifi"]["connected"] = WiFi.status() == WL_CONNECTED;
   d["wifi"]["ssid"] = WiFi.SSID();
   d["wifi"]["ip"] = WiFi.localIP().toString();

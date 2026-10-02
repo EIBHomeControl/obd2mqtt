@@ -108,6 +108,7 @@ void loop(bool wifiUp, bool mqttConfigured, bool mqttUp, bool apClients) {
 }
 
 bool safeMode() { return safe; }
+uint32_t crashCount() { return rtcCrashes; }
 const char* resetReason() {   // in der aktuell eingestellten Sprache
   static String s;
   s = rstWhy.length() ? String("Watchdog: ") + rstWhy : String(rawReason(rstCode));

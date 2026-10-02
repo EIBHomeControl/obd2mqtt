@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.6
+- Fix: Absturzschleife durch volles Dateisystem – die Log-Dateien konnten zusammen ~96 KB von 128 KB belegen; jetzt max. 2 × 16 KB, und das Log belegt nie mehr als 70 % des Flash (Profile/Einstellungen haben Vorrang)
+- Fix: Log-Dateien werden nur noch unter Sperre gelesen/geschrieben – Herunterladen konnte mit dem gleichzeitigen Schreiben/Rotieren kollidieren
+- Selbstheilung: nach 2 Abstürzen in Folge wird das ältere Log gelöscht, nach 3 auch das aktuelle; ebenso beim Start, wenn das Dateisystem zu voll ist; alte 48-KB-Logs werden beim Update entfernt
+- System: freier Heap mit Minimum und größtem Block sowie Belegung des Dateisystems
+- Status im sicheren Modus zeigt MQTT-Verbindung wieder korrekt an
+- Log-Zeilen direkt nach dem Start haben gleich Ortszeit statt UTC
+
 ## 0.3.5
 - MQTT: aktives Fahrzeugprofil unter <base>/profile (+ Details als JSON unter <base>/profile/attributes), in Home Assistant als Sensor „Fahrzeugprofil“
 - MQTT: alle Werte inkl. Profil und Zeitstempel als ein JSON unter <base>/state nach jedem Abfragezyklus

@@ -79,10 +79,15 @@ static void wifiLoop() {
 void setup() {
   Serial.begin(115200);
   delay(200);
-  logf("OBD2MQTT %s start", FW_VERSION);
-  if (!fsBegin()) logf("LittleFS error!");
+  bool fsOk = fsBegin();
   bool cfgOk = loadConfig();
+  // Zeitzone sofort setzen: nach einem Software-Neustart läuft die Uhr weiter, Log-Zeilen sollen gleich Ortszeit haben
+  setenv("TZ", cfg.tz.c_str(), 1);
+  tzset();
+  logf("OBD2MQTT %s start", FW_VERSION);
+  if (!fsOk) logf("LittleFS error!");
   Watchdog::begin();
+  logBootCheck(Watchdog::crashCount());
   if (!cfgOk) logf("%s", T("Keine Konfiguration – Standardwerte", "No configuration – using defaults"));
   logSetPersist(cfg.logPersist);
   configTzTime(cfg.tz.c_str(), cfg.ntpServer.c_str(), "time.cloudflare.com");

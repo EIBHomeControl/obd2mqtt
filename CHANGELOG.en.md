@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.6
+- Fix: crash loop caused by a full file system – the log files could use ~96 KB of 128 KB; now max. 2 × 16 KB, and the log never uses more than 70 % of the flash (profiles/settings take priority)
+- Fix: log files are only read/written under a lock – downloading could collide with simultaneous writing/rotation
+- Self-healing: after 2 crashes in a row the older log is deleted, after 3 the current one too; same at startup when the file system is too full; old 48 KB logs are removed on update
+- System: free heap with minimum and largest block, plus file system usage
+- Status in safe mode shows the MQTT connection correctly again
+- Log lines right after startup use local time instead of UTC
+
 ## 0.3.5
 - MQTT: active vehicle profile at <base>/profile (+ details as JSON at <base>/profile/attributes), in Home Assistant as sensor “Vehicle profile”
 - MQTT: all values including profile and timestamp as one JSON at <base>/state after each poll cycle

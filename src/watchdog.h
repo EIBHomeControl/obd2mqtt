@@ -12,6 +12,7 @@ void armTaskWdt();                  // am Ende von setup()
 void feed();                        // in langen Warteschleifen aufrufen
 void loop(bool wifiUp, bool mqttConfigured, bool mqttUp, bool apClients);
 bool safeMode();
+uint32_t crashCount();
 const char* resetReason();          // Grund des letzten Neustarts (Klartext)
 void restart(const char* why);      // geplanter Neustart mit Begründung
 void clearCrashCounter();           // z.B. bei manuellem Neustart

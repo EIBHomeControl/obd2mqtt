@@ -233,10 +233,12 @@ void begin() {
     if (!auth(r)) return;
     bool old = r->hasParam("old");
     logFlush();
-    const char* path = old ? "/log.old.txt" : "/log.txt";
+    // Datei unter Sperre komplett lesen (max. ~20 KB) statt zu streamen – sonst kann die Hauptschleife
+    // die Datei während der Übertragung rotieren/löschen (Absturzursache bis 0.3.5)
+    String txt;
     AsyncWebServerResponse* res;
-    if (logPersist() && LittleFS.exists(path)) {
-      res = r->beginResponse(LittleFS, path, "text/plain; charset=utf-8");
+    if (logPersist() && logReadFile(old, txt)) {
+      res = r->beginResponse(200, "text/plain; charset=utf-8", txt);
     } else if (old) {
       return sendMsg(r, false, T("Kein älteres Log vorhanden", "No older log available"), 404);
     } else {
