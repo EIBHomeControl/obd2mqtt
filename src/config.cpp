@@ -69,7 +69,10 @@ void configToJson(JsonDocument& d, bool mask) {
   d["ble_write"] = cfg.bleWrite;
   d["ble_name"] = cfg.bleName;
   d["profile"] = cfg.profile;
+  d["poll_enabled"] = cfg.pollEnabled;
   d["min_voltage"] = cfg.minVoltage;
+  d["sleep_voltage"] = cfg.sleepVoltage;
+  d["sleep_poll_min"] = cfg.sleepPollMin;
   d["retry_sec"] = cfg.retrySec;
   d["cmd_timeout_ms"] = cfg.cmdTimeoutMs;
   d["keep_connected"] = cfg.keepConnected;
@@ -115,7 +118,10 @@ void configFromJson(JsonVariantConst s) {
   str("ble_write", cfg.bleWrite);
   str("ble_name", cfg.bleName);
   str("profile", cfg.profile);
+  if (s["poll_enabled"].is<bool>()) cfg.pollEnabled = s["poll_enabled"];
   if (s["min_voltage"].is<float>()) cfg.minVoltage = s["min_voltage"];
+  if (s["sleep_voltage"].is<float>()) cfg.sleepVoltage = constrain(s["sleep_voltage"].as<float>(), 0.0f, 16.0f);
+  if (s["sleep_poll_min"].is<int>()) cfg.sleepPollMin = max(0, s["sleep_poll_min"].as<int>());
   if (s["retry_sec"].is<int>()) cfg.retrySec = max(10, s["retry_sec"].as<int>());
   if (s["cmd_timeout_ms"].is<int>()) cfg.cmdTimeoutMs = constrain(s["cmd_timeout_ms"].as<int>(), 500, 15000);
   if (s["keep_connected"].is<bool>()) cfg.keepConnected = s["keep_connected"];

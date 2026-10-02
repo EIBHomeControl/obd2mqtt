@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.8
+- Neu: Hauptschalter „Abfrage EIN/AUS“ – auf der Status-Seite und in Home Assistant als Schalter (<base>/polling, Befehl an <base>/polling/set). Bei AUS verbindet sich die Bridge nicht mehr mit dem Auto; Test, Terminal und „Jetzt abfragen“ funktionieren weiter. Die Einstellung bleibt nach einem Neustart erhalten
+- Neu: Auto schlafen lassen – liegt die 12-V-Spannung unter 13,2 V (Auto aus, lädt nicht), werden keine Anfragen mehr ans Auto geschickt, nur noch die Spannung am Dongle gemessen. Bisher hat die Abfrage alle 2 min den IONIQ 5 immer wieder geweckt (12 V sprang jedes Mal auf 14,7 V)
+- Einstellungen → Abfrage: Schwelle „Auto schläft unter“ und optional „Abfrage, während das Auto schläft“ (alle N min); „Jetzt abfragen“ fragt immer ab
+- Status zeigt „Auto wach/schläft“ mit Spannung; Home Assistant: neuer Sensor „Auto wach“ (<base>/car_awake)
+- Fix: Die 10-min-Pause „Keine gültige Antwort“ griff auch bei unvollständigen Antworten, obwohl das Auto wach war – jetzt nur noch, wenn das Auto gar nicht antwortet
+- IONIQ-5-Werksprofil: längeres Antwort-Timeout (ATSTFF) gegen unvollständige Mehrfach-Antworten (bestehende Profile: Init-Befehl ATST96 → ATSTFF ändern oder Werksprofile wiederherstellen)
+- Weniger CAN-Verkehr: gleiche Anfragen werden pro Abfragezyklus nur noch einmal gesendet (bisher z. B. 220105 bis zu 3× pro Zyklus)
+- IONIQ-5-Werksprofil: neue experimentelle Werte „Laden aktiv“, „DC-Laden“, „AC-Stecker“ (220101 Byte 12, laut WiCAN) und „Laden aktiv BMS“ (220106 Byte 27, laut evDash) – bitte mit Test prüfen
+
 ## 0.3.7
 - Einstellungen → WLAN: IP-Adresse automatisch (DHCP) oder fest (IP, Subnetzmaske, Gateway, DNS); Knopf „Aktuelle Werte übernehmen“
 - Fallback: Funktioniert die feste IP beim Start nicht (keine WLAN-Verbindung oder MQTT-Broker nicht erreichbar), holt sich die Bridge automatisch eine Adresse per DHCP – Hinweis im Log, unter System und in den Einstellungen

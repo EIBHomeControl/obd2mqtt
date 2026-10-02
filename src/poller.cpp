@@ -1,3 +1,4 @@
+#include <map>
 #include <LittleFS.h>
 #include "poller.h"
 #include <WiFi.h>
@@ -26,6 +27,10 @@ static String currentHeader;
 static uint32_t nextConnectTry = 0;
 static bool elmReady = false;         // Init-Sequenz ausgeführt
 static float lastVoltage = NAN;
+static bool carAsleep = false;          // 12V unter sleepVoltage → Auto schläft, kein CAN-Verkehr
+static uint32_t lastSleepPoll = 0;
+static bool forcePoll = false;          // "Jetzt abfragen" übergeht den Schlafmodus einmal
+static ObdParse::ErrKind lastQueryKind = ObdParse::ERR_NONE;   // Fehlerart der letzten query()
 static String lastError;
 static uint32_t lastConnectOk = 0;
 static uint32_t pollCycles = 0;
@@ -145,6 +150,7 @@ static bool query(const String& header, const String& cmd, std::vector<uint8_t>&
       logf(T("%s: %s – wiederhole (roh: %s)", "%s: %s – retrying (raw: %s)"), cmd.c_str(), err.c_str(), r.c_str());
       delay(500);
     }
+    lastQueryKind = ObdParse::ERR_OTHER;
     if (!elmCmd(cmd, raw)) {
       err = ElmBle::connected() ? T("Timeout (kein Prompt)", "Timeout (no prompt)") : T("BLE getrennt", "BLE disconnected");
       if (!ElmBle::connected()) return false;
@@ -153,6 +159,7 @@ static bool query(const String& header, const String& cmd, std::vector<uint8_t>&
     std::string e;
     bool ok = ObdParse::parseResponse(raw.c_str(), cmd.c_str(), bytes, e);
     err = e.c_str();
+    lastQueryKind = ok ? ObdParse::ERR_NONE : ObdParse::lastErrKind;
     if (ok) return true;
     // Wiederholen nur bei unvollständiger Antwort bzw. CAN-Fehler (typisch kurz nach dem Verbinden),
     // nicht bei NO DATA / negativer Antwort
@@ -239,18 +246,51 @@ static void pollDue() {
     return;
   }
 
+  // Schlafmodus: Liegt die 12V-Spannung unter der Schwelle, ist das Auto aus und lädt nicht (kein DC/DC-Wandler).
+  // Jede CAN-Anfrage würde es wecken – dann nur die Spannung beobachten und nichts abfragen.
+  bool force = forcePoll;
+  forcePoll = false;
+  if (cfg.sleepVoltage > 0 && !isnan(v)) {
+    bool asleep = v < cfg.sleepVoltage;
+    if (asleep != carAsleep) {
+      carAsleep = asleep;
+      MqttHa::publishText("car_awake", asleep ? "OFF" : "ON");
+      if (asleep)
+        logf(T("Auto schläft (12V %.1f V < %.1f V) – keine Abfragen, damit es schlafen kann", "Car asleep (12V %.1f V < %.1f V) – no queries so it can sleep"), v, cfg.sleepVoltage);
+      else
+        logf(T("Auto wach (12V %.1f V) – normale Abfrage", "Car awake (12V %.1f V) – normal polling"), v);
+    }
+    if (asleep && !force) {
+      bool sleepPollDue = cfg.sleepPollMin > 0 && (lastSleepPoll == 0 || now - lastSleepPoll >= cfg.sleepPollMin * 60000UL);
+      if (!sleepPollDue) {
+        if (!cfg.keepConnected) { ElmBle::disconnect(); elmReady = false; }
+        nextConnectTry = now + 60000UL;   // in 1 min wieder nur die Spannung prüfen (weckt das Auto nicht)
+        return;
+      }
+      lastSleepPoll = now;
+      logf(T("Abfrage trotz Schlaf (alle %lu min)", "Polling while asleep (every %lu min)"), (unsigned long)cfg.sleepPollMin);
+    }
+  }
+
   // Fällige PIDs abfragen; gleiche header+cmd nur einmal senden
-  String lastKey;
+  // Antworten pro Zyklus merken: gleiche header+cmd nur einmal senden, auch wenn die PIDs nicht hintereinander stehen
+  struct QRes { bool ok; std::vector<uint8_t> bytes; String raw, err; };
+  std::map<String, QRes> cache;
   std::vector<uint8_t> bytes;
   String raw, qerr;
-  bool qok = false, anyOk = false, anyTried = false;
+  bool qok = false, anyOk = false, anyTried = false, anyReply = false;
   for (size_t i = 0; i < profile.pids.size(); i++) {
     if (!isDue(i, now)) continue;
     const PidDef& p = profile.pids[i];
     String key = p.header + "|" + p.cmd;
-    if (key != lastKey) {
+    auto it = cache.find(key);
+    if (it == cache.end()) {
       qok = query(p.header, p.cmd, bytes, raw, qerr);
-      lastKey = key;
+      // Auto hat geantwortet (auch wenn unvollständig/negativ) → es ist wach, keine Schlaf-Pause
+      if (qok || lastQueryKind == ObdParse::ERR_INCOMPLETE || lastQueryKind == ObdParse::ERR_NRC) anyReply = true;
+      cache[key] = QRes{qok, bytes, raw, qerr};
+    } else {
+      qok = it->second.ok; bytes = it->second.bytes; raw = it->second.raw; qerr = it->second.err;
     }
     double val = NAN;
     String perr = qerr;
@@ -285,7 +325,7 @@ static void pollDue() {
   pollCycles++;
   publishStateJson();
   // Keine Antwort (Auto schläft) → länger warten, damit nichts wachgehalten wird
-  if (anyTried && !anyOk && cfg.backoffSec > 0) {
+  if (anyTried && !anyOk && !anyReply && cfg.backoffSec > 0) {
     nextConnectTry = millis() + cfg.backoffSec * 1000UL;
     logf(T("Keine gültige Antwort – nächster Versuch in %lus", "No valid response – next attempt in %lus"), (unsigned long)cfg.backoffSec);
     if (!cfg.keepConnected) { ElmBle::disconnect(); elmReady = false; }
@@ -384,7 +424,23 @@ void requestConfigApply(const String& json) {
   pendingConfig = json;
 }
 void requestProfileReload() { flagProfileReload = true; }
-void requestPollNow() { flagPollNow = true; }
+void requestPollNow() { flagPollNow = true; forcePoll = true; }
+
+static volatile int pendingEnable = -1;
+void requestEnabled(bool on) { pendingEnable = on ? 1 : 0; }
+
+static void applyEnable() {
+  int pe = pendingEnable;
+  if (pe < 0) return;
+  pendingEnable = -1;
+  bool on = pe == 1;
+  MqttHa::publishText("polling", on ? "ON" : "OFF");
+  if (cfg.pollEnabled == on) return;
+  cfg.pollEnabled = on;
+  saveConfig();
+  logf("%s", on ? T("Abfrage eingeschaltet", "Polling switched on") : T("Abfrage ausgeschaltet – keine Verbindung zum Auto", "Polling switched off – no connection to the car"));
+  if (on) nextConnectTry = 0;
+}
 
 static void applyPendingConfig() {
   String js;
@@ -444,11 +500,26 @@ void setPaused(bool p) {
 }
 
 void loop() {
+  applyEnable();
   if (!bleOn) { applyPendingConfig(); if (flagProfileReload) { flagProfileReload = false; reloadProfile(); } updateCache(); return; }
   if (paused) { if (ElmBle::connected()) { ElmBle::disconnect(); elmReady = false; } updateCache(); return; }
   applyPendingConfig();
   if (flagProfileReload) { flagProfileReload = false; reloadProfile(); }
   runJob();
+
+  // Hauptschalter aus: keine automatische Abfrage, Dongle trennen (Test/Terminal/„Jetzt abfragen“ gehen weiter)
+  if (!cfg.pollEnabled && !flagPollNow) {
+    if (ElmBle::connected() && !cfg.keepConnected) {
+      bool jobBusy;
+      {
+        std::lock_guard<std::mutex> lk(mtx);
+        jobBusy = job.state == "pending" || job.state == "running";
+      }
+      if (!jobBusy && (!lastJobMs || millis() - lastJobMs > 60000)) { ElmBle::disconnect(); elmReady = false; }
+    }
+    updateCache();
+    return;
+  }
 
   uint32_t now = millis();
   if (flagPollNow) {
@@ -514,6 +585,8 @@ void statusJson(JsonDocument& d) {
   d["ble"]["last_ok_s"] = lastConnectOk ? (int32_t)((now - lastConnectOk) / 1000) : -1;
   d["ble"]["next_try_s"] = (int32_t)(nextConnectTry - now) > 0 ? (int32_t)((nextConnectTry - now) / 1000) : 0;
   if (!isnan(lastVoltage)) d["voltage"] = lastVoltage;
+  d["car_asleep"] = cfg.sleepVoltage > 0 && carAsleep;
+  d["poll_enabled"] = cfg.pollEnabled;
   d["profile"] = cfg.profile;
   d["profile_name"] = profile.name;
   d["last_error"] = lastError;

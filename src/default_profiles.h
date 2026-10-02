@@ -16,7 +16,7 @@
 static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
   "name": "Hyundai IONIQ 5 / Kia EV6", "name_en": "Hyundai IONIQ 5 / Kia EV6",
   "model": "Hyundai IONIQ 5 (E-GMP)",
-  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATST96"],
+  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATSTFF"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "7E4", "cmd": "220105",
       "formula": "B34/2", "unit": "%", "device_class": "battery",
@@ -40,7 +40,19 @@ static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 100, "precision": 1, "enabled": true },
     { "id": "soh", "name": "SoH", "header": "7E4", "cmd": "220105",
       "formula": "u16(B28,B29)/10", "unit": "%", "icon": "mdi:battery-heart-variant",
-      "interval": 3600, "min": 0, "max": 100, "precision": 1, "enabled": true }
+      "interval": 3600, "min": 0, "max": 100, "precision": 1, "enabled": true },
+    { "id": "charging", "name": "Laden aktiv (experimentell)", "name_en": "Charging (experimental)", "header": "7E4", "cmd": "220101",
+      "formula": "bit(B12,7)", "icon": "mdi:ev-station", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
+    { "id": "charging_dc", "name": "DC-Laden (experimentell)", "name_en": "DC charging (experimental)", "header": "7E4", "cmd": "220101",
+      "formula": "bit(B12,6)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
+    { "id": "ac_plug", "name": "AC-Stecker (experimentell)", "name_en": "AC plug (experimental)", "header": "7E4", "cmd": "220101",
+      "formula": "bit(B12,5)", "icon": "mdi:ev-plug-type2", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
+    { "id": "charging_bms", "name": "Laden aktiv BMS (experimentell)", "name_en": "Charging BMS (experimental)", "header": "7E4", "cmd": "220106",
+      "formula": "bit(B27,0)", "icon": "mdi:battery-charging", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true }
   ]
 })JSON";
 

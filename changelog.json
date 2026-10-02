@@ -1,5 +1,28 @@
 [
  {
+  "v": "0.3.8",
+  "de": [
+   "Neu: Hauptschalter „Abfrage EIN/AUS“ – auf der Status-Seite und in Home Assistant als Schalter (<base>/polling, Befehl an <base>/polling/set). Bei AUS verbindet sich die Bridge nicht mehr mit dem Auto; Test, Terminal und „Jetzt abfragen“ funktionieren weiter. Die Einstellung bleibt nach einem Neustart erhalten",
+   "Neu: Auto schlafen lassen – liegt die 12-V-Spannung unter 13,2 V (Auto aus, lädt nicht), werden keine Anfragen mehr ans Auto geschickt, nur noch die Spannung am Dongle gemessen. Bisher hat die Abfrage alle 2 min den IONIQ 5 immer wieder geweckt (12 V sprang jedes Mal auf 14,7 V)",
+   "Einstellungen → Abfrage: Schwelle „Auto schläft unter“ und optional „Abfrage, während das Auto schläft“ (alle N min); „Jetzt abfragen“ fragt immer ab",
+   "Status zeigt „Auto wach/schläft“ mit Spannung; Home Assistant: neuer Sensor „Auto wach“ (<base>/car_awake)",
+   "Fix: Die 10-min-Pause „Keine gültige Antwort“ griff auch bei unvollständigen Antworten, obwohl das Auto wach war – jetzt nur noch, wenn das Auto gar nicht antwortet",
+   "IONIQ-5-Werksprofil: längeres Antwort-Timeout (ATSTFF) gegen unvollständige Mehrfach-Antworten (bestehende Profile: Init-Befehl ATST96 → ATSTFF ändern oder Werksprofile wiederherstellen)",
+   "Weniger CAN-Verkehr: gleiche Anfragen werden pro Abfragezyklus nur noch einmal gesendet (bisher z. B. 220105 bis zu 3× pro Zyklus)",
+   "IONIQ-5-Werksprofil: neue experimentelle Werte „Laden aktiv“, „DC-Laden“, „AC-Stecker“ (220101 Byte 12, laut WiCAN) und „Laden aktiv BMS“ (220106 Byte 27, laut evDash) – bitte mit Test prüfen"
+  ],
+  "en": [
+   "New: main switch “Polling ON/OFF” – on the status page and in Home Assistant as a switch (<base>/polling, command to <base>/polling/set). When OFF the bridge no longer connects to the car; Test, terminal and “Poll now” keep working. The setting survives a restart",
+   "New: let the car sleep – if the 12 V voltage is below 13.2 V (car off, not charging), no requests are sent to the car, only the voltage at the dongle is measured. Previously polling every 2 min kept waking the IONIQ 5 (12 V jumped to 14.7 V each time)",
+   "Settings → Polling: threshold “Car asleep below” and optional “Poll while car is asleep” (every N min); “Poll now” always polls",
+   "Status shows “Car awake/asleep” with voltage; Home Assistant: new sensor “Car awake” (<base>/car_awake)",
+   "Fix: the 10 min pause “No valid response” also triggered on incomplete responses although the car was awake – now only when the car does not respond at all",
+   "IONIQ 5 factory profile: longer response timeout (ATSTFF) against incomplete multi-frame responses (existing profiles: change init command ATST96 → ATSTFF or restore factory profiles)",
+   "Less CAN traffic: identical requests are sent only once per poll cycle (previously e.g. 220105 up to 3× per cycle)",
+   "IONIQ 5 factory profile: new experimental values “Charging”, “DC charging”, “AC plug” (220101 byte 12, per WiCAN) and “Charging BMS” (220106 byte 27, per evDash) – please verify with Test"
+  ]
+ },
+ {
   "v": "0.3.7",
   "de": [
    "Einstellungen → WLAN: IP-Adresse automatisch (DHCP) oder fest (IP, Subnetzmaske, Gateway, DNS); Knopf „Aktuelle Werte übernehmen“",

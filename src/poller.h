@@ -16,6 +16,7 @@ void loop();
 void requestConfigApply(const String& json);  // übernimmt + speichert Konfiguration
 void requestProfileReload();                  // aktives Profil neu laden
 void requestPollNow();
+void requestEnabled(bool on);                 // Hauptschalter (Web/MQTT) – wird im loop() gespeichert
 void setPaused(bool p);                       // z.B. während OTA
 bool isPaused();
 

@@ -69,6 +69,8 @@ All values of the factory profiles are enabled by default; you can switch indivi
 | `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **calculated** range |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | state of health |
+| `charging` / `charging_dc` / `ac_plug` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` / `bit(B12,5)` | charging active / DC charging / AC plug – **experimental** (WiCAN; evDash reported this byte as always 0 on its car) |
+| `charging_bms` | 7E4 | 220106 | `bit(B27,0)` | charging active – **experimental** (evDash) |
 
 Sources: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
 
@@ -132,6 +134,8 @@ WiCAN counts the bytes of the raw CAN frames including the ISO-TP control bytes;
 | `obd2mqtt/<pid-id>` | measured value (retained), e.g. `obd2mqtt/soc` → `54.5` |
 | `obd2mqtt/voltage_12v` | 12 V voltage measured at the dongle |
 | `obd2mqtt/car` | `online` / `offline` – dongle reachable |
+| `obd2mqtt/polling` | `ON` / `OFF` – main switch for automatic polling; switch it via `obd2mqtt/polling/set` (in HA: switch "Polling") |
+| `obd2mqtt/car_awake` | `ON` / `OFF` – car awake (12 V above the sleep threshold, i.e. DC/DC converter active) |
 | `obd2mqtt/ble_rssi` | BLE signal strength |
 | `obd2mqtt/last_error` | last error |
 | `obd2mqtt/status` | `online` / `offline` (last will of the bridge) |
@@ -143,6 +147,7 @@ Discovery is published under `homeassistant/sensor/obd2mqtt_xxxxxx/<id>/config`.
 
 ## Notes
 
+- **Let the car sleep:** every OBD request wakes the car. If the 12 V voltage is below 13.2 V (car off, not charging), the bridge sends no requests and only watches the voltage; as soon as the car wakes up by itself, normal polling resumes. Adjustable under Settings → Polling.
 - **12 V battery:** by default the car is polled only every 120 s, BLE is disconnected in between and polling pauses below 12.2 V. If the car doesn't respond (it's asleep), the bridge waits 10 min. Use a dongle with auto-sleep (e.g. Vgate iCar Pro BLE, vLinker MC+/FS BLE, OBDLink CX).
 - **When does the car respond?** On the IONIQ 5 the BMS usually only responds with ignition on or while charging. While asleep you get `NO DATA`. The last value is kept in Home Assistant (retained).
 - Only **BLE** dongles (Bluetooth 4.0+) are supported, no Bluetooth Classic adapters (SPP).

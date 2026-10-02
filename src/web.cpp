@@ -339,6 +339,13 @@ void begin() {
     sendMsg(r, true, T("Abfrage angestoßen", "Poll triggered"));
   });
 
+  server.on("/api/polling", HTTP_POST, [](AsyncWebServerRequest* r) {
+    if (!auth(r)) return;
+    bool on = r->hasParam("on") && r->getParam("on")->value() == "1";
+    Poller::requestEnabled(on);
+    sendMsg(r, true, on ? T("Abfrage eingeschaltet", "Polling switched on") : T("Abfrage ausgeschaltet", "Polling switched off"));
+  });
+
   server.on("/api/reboot", HTTP_POST, [](AsyncWebServerRequest* r) {
     if (!auth(r)) return;
     Watchdog::clearCrashCounter();   // manueller Neustart → sicherer Modus endet

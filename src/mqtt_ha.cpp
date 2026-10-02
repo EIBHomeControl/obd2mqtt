@@ -5,6 +5,7 @@
 #include "config.h"
 #include "log.h"
 #include "i18n.h"
+#include "poller.h"
 
 namespace MqttHa {
 
@@ -108,6 +109,25 @@ static void sendDiscovery() {
     d["device_class"] = "connectivity";
     publishConfig("binary_sensor", "car", d);
   }
+  if (cfg.sleepVoltage > 0) { // Auto wach (12V über Schwelle = DC/DC-Wandler aktiv)
+    JsonDocument d;
+    d["name"] = T("Auto wach", "Car awake");
+    d["state_topic"] = topic("car_awake");
+    d["icon"] = "mdi:car-electric";
+    publishConfig("binary_sensor", "car_awake", d);
+  } else { JsonDocument empty; publishConfig("binary_sensor", "car_awake", empty); }
+  { // Hauptschalter Abfrage
+    JsonDocument d;
+    d["name"] = T("Abfrage", "Polling");
+    d["state_topic"] = topic("polling");
+    d["command_topic"] = topic("polling/set");
+    d["payload_on"] = "ON";
+    d["payload_off"] = "OFF";
+    d["icon"] = "mdi:car-connected";
+    d["entity_category"] = "config";
+    publishConfig("switch", "polling", d);
+  }
+  mqtt.publish(topic("polling").c_str(), cfg.pollEnabled ? "ON" : "OFF", true);
   { // BLE-Signal
     JsonDocument d;
     d["name"] = "BLE Signal";
@@ -138,7 +158,19 @@ static void sendDiscovery() {
   logf(T("MQTT Discovery gesendet (%u PIDs aktiv)", "MQTT discovery sent (%u PIDs active)"), (unsigned)now.size());
 }
 
+static void onMessage(char* t, byte* payload, unsigned int len) {
+  String tp(t), v;
+  for (unsigned i = 0; i < len && i < 16; i++) v += (char)payload[i];
+  v.trim();
+  v.toUpperCase();
+  if (tp == topic("polling/set")) {
+    bool on = v == "ON" || v == "1" || v == "TRUE";
+    if (on || v == "OFF" || v == "0" || v == "FALSE") Poller::requestEnabled(on);
+  }
+}
+
 void begin() {
+  mqtt.setCallback(onMessage);
   mqtt.setBufferSize(1536);
   mqtt.setKeepAlive(30);
 }
@@ -160,6 +192,7 @@ void loop() {
     if (!ok) { logf(T("MQTT-Verbindung fehlgeschlagen (rc=%d)", "MQTT connection failed (rc=%d)"), mqtt.state()); return; }
     logf(T("MQTT verbunden mit %s:%u", "MQTT connected to %s:%u"), cfg.mqttHost.c_str(), cfg.mqttPort);
     mqtt.publish(will.c_str(), "online", true);
+    mqtt.subscribe(topic("polling/set").c_str());
     discoveryPending = true;
   }
   if (discoveryPending) { discoveryPending = false; sendDiscovery(); }

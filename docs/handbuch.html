@@ -132,7 +132,10 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <h3>Wichtige Einstellungen</h3>
 <table>
 <tr><th>Einstellung</th><th>Bedeutung</th><th>Standard</th></tr>
+<tr><td>Abfrage EIN/AUS</td><td>Hauptschalter auf der Status-Seite (und in Home Assistant als Schalter „Abfrage“). Bei AUS verbindet sich die Bridge nicht mehr mit dem Auto – z. B. in der Werkstatt oder bei langer Standzeit. Test, Terminal und „Jetzt abfragen“ funktionieren weiter. Bleibt nach einem Neustart erhalten.</td><td>EIN</td></tr>
 <tr><td>12V-Mindestspannung</td><td>Unter diesem Wert wird nicht abgefragt, um die 12-V-Batterie zu schonen.</td><td>12,2 V</td></tr>
+<tr><td>Auto schläft unter</td><td>Liegt die 12-V-Spannung darunter, ist das Auto aus und lädt nicht. Dann schickt die Bridge <b>keine Anfragen ans Auto</b> (die würden es jedes Mal aufwecken) und misst nur einmal pro Minute die Spannung am Dongle. Sobald das Auto selbst aufwacht (Fahren, Laden, Vorklimatisieren, 12-V-Nachladung), wird wieder normal abgefragt. Ein wacher IONIQ 5 liegt bei ca. 14,7 V, ein schlafender bei 12,4–12,8 V. Bei einer 12-V-Lithiumbatterie (Ruhespannung ~13,3 V) den Wert auf ca. 13,6 V erhöhen. 0 = immer abfragen.</td><td>13,2 V</td></tr>
+<tr><td>Abfrage, während das Auto schläft</td><td>Trotz Schlaf alle N Minuten einmal abfragen (weckt das Auto kurz). 0 = nie. „Jetzt abfragen“ fragt immer ab.</td><td>0</td></tr>
 <tr><td>Neuer Verbindungsversuch nach</td><td>Wartezeit, wenn der Dongle nicht erreichbar ist (Auto weg).</td><td>60 s</td></tr>
 <tr><td>Pause wenn Auto nicht antwortet</td><td>Wartezeit, wenn das Auto schläft.</td><td>600 s</td></tr>
 <tr><td>BLE-Verbindung dauerhaft halten</td><td>„nein“ = Dongle darf zwischen den Abfragen schlafen (empfohlen).</td><td>nein</td></tr>
