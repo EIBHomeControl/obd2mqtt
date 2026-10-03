@@ -122,6 +122,23 @@ bool logReadFile(bool old, String& out) {
   return true;
 }
 
+bool logFileExists(bool old) {
+  std::lock_guard<std::mutex> fl(fmtx);
+  return LittleFS.exists(old ? LOG_OLD : LOG_FILE);
+}
+
+size_t logReadChunk(bool old, size_t offset, uint8_t* buf, size_t maxLen) {
+  std::lock_guard<std::mutex> fl(fmtx);
+  const char* path = old ? LOG_OLD : LOG_FILE;
+  if (!LittleFS.exists(path)) return 0;
+  File f = LittleFS.open(path, "r");
+  if (!f) return 0;
+  size_t n = 0;
+  if (offset < f.size() && f.seek(offset)) n = f.read(buf, min(maxLen, (size_t)1024));
+  f.close();
+  return n;
+}
+
 void logBootCheck(uint32_t crashes) {
   std::lock_guard<std::mutex> fl(fmtx);
   size_t total = LittleFS.totalBytes(), used = LittleFS.usedBytes();

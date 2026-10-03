@@ -8,6 +8,9 @@
 
 namespace ElmBle {
 
+volatile bool quiet = false;
+
+
 static NimBLEClient* client = nullptr;
 static NimBLERemoteCharacteristic* chrNotify = nullptr;
 static NimBLERemoteCharacteristic* chrWrite = nullptr;
@@ -48,19 +51,22 @@ static void drain(uint32_t quietMs, uint32_t maxMs) {
 
 class ClientCb : public NimBLEClientCallbacks {
   void onDisconnect(NimBLEClient*, int reason) override {
-    if (reason == 0x216) logf("%s", T("BLE getrennt (planmäßig – Dongle darf bis zur nächsten Abfrage schlafen)", "BLE disconnected (scheduled – dongle may sleep until the next poll)"));
-    else logf(T("BLE getrennt (Grund 0x%X)", "BLE disconnected (reason 0x%X)"), reason);
+    if (reason == 0x216) {   // 0x216 = von uns getrennt (planmäßig)
+      if (!quiet) logf("%s", T("BLE getrennt (planmäßig – Dongle darf bis zur nächsten Abfrage schlafen)", "BLE disconnected (scheduled – dongle may sleep until the next poll)"));
+    } else logf(T("BLE getrennt (Grund 0x%X)", "BLE disconnected (reason 0x%X)"), reason);
   }
 };
 static ClientCb clientCb;
 
 void begin() {
   NimBLEDevice::init("obd2mqtt");
+  NimBLEDevice::setMTU(247);   // größere Pakete: lange Antworten (Multi-Frame) in weniger Notifications
   NimBLEDevice::setPower(9);   // max. TX-Leistung (dBm), hilft bei Garage → Auto
 }
 
 bool connected() { return client && client->isConnected(); }
 int rssi() { return connected() ? client->getRssi() : 0; }
+uint16_t mtu() { return connected() ? client->getMTU() : 0; }
 String detectedUuids() { return uuidInfo; }
 String deviceName() { return devName.length() ? devName : cfg.bleName; }
 String dongleKind() { return kind; }
@@ -133,6 +139,9 @@ bool connect(String& err) {
   client = NimBLEDevice::createClient();
   client->setClientCallbacks(&clientCb, false);
   client->setConnectTimeout(6000);
+  // Kurzes Verbindungsintervall (7,5–15 ms statt Standard 30–50 ms): mehr Durchsatz, damit der Puffer
+  // billiger Dongles bei langen Antworten nicht überläuft (Ursache für „Unvollständige Antwort“)
+  client->setConnectionParams(6, 12, 0, 400);
 
   std::vector<uint8_t> types;
   if (cfg.bleAddrType == "public") types = {BLE_ADDR_PUBLIC};
@@ -146,6 +155,7 @@ bool connect(String& err) {
   }
   if (!ok) { err = T("Dongle nicht erreichbar (Auto weg / Dongle schläft?)", "Dongle not reachable (car away / dongle asleep?)"); disconnect(); return false; }
 
+  client->exchangeMTU();
   if (!resolveCharacteristics(err)) { disconnect(); return false; }
 
   bool sub = chrNotify->canNotify() ? chrNotify->subscribe(true, onNotify)
@@ -176,8 +186,10 @@ bool connect(String& err) {
     else if (svc.indexOf("e7810a71") >= 0) kind = "vLinker / iOS-Vlink";
     else kind = T("unbekannter Typ", "unknown type");
   }
-  logf(T("BLE verbunden: %s (%s), RSSI %d dBm, UUIDs %s", "BLE connected: %s (%s), RSSI %d dBm, UUIDs %s"),
-       deviceName().length() ? deviceName().c_str() : cfg.bleMac.c_str(), kind.c_str(), client->getRssi(), uuidInfo.c_str());
+  if (!quiet)
+    logf(T("BLE verbunden: %s (%s), RSSI %d dBm, MTU %u, UUIDs %s", "BLE connected: %s (%s), RSSI %d dBm, MTU %u, UUIDs %s"),
+         deviceName().length() ? deviceName().c_str() : cfg.bleMac.c_str(), kind.c_str(), client->getRssi(),
+         (unsigned)client->getMTU(), uuidInfo.c_str());
   return true;
 }
 

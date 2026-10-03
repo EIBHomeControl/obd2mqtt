@@ -25,6 +25,7 @@ Car (OBD2 dongle) ──Bluetooth LE──► ESP32 in the garage ──WiFi─�
 - 12 V protection (ATRV), pause when the car doesn't respond, BLE disconnects between polls so the dongle can sleep
 - Setup access point with captive portal, mDNS (`http://obd2mqtt.local`), OTA updates, optional password protection
 - Watchdog with automatic restart and safe mode
+- **Diagnostic report** (one click, copy/download, no WiFi/IP/passwords) and a 2-hour diagnostic log – ideal for beta testers
 
 ## What you need
 
@@ -69,14 +70,14 @@ All values of the factory profiles are enabled by default; you can switch indivi
 | `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **calculated** range |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | state of health |
-| `charging` / `charging_dc` / `ac_plug` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` / `bit(B12,5)` | charging active / DC charging / AC plug – **experimental** (WiCAN; evDash reported this byte as always 0 on its car) |
-| `charging_bms` | 7E4 | 220106 | `bit(B27,0)` | charging active – **experimental** (evDash) |
+| `charging` / `charging_dc` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` | charging active / DC charging – **experimental** (WiCAN; evDash reported this byte as always 0 on its car). No plug-detection PID known – the AC plug bit stays 0 with the cable plugged in |
 
 Sources: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
 
 ### XPeng G9 (also G6/P5/P7/X9)
 
-Battery management via header `704`, response from `784` (`ATCRA784`, `ATFCSH704`, `ATFCSM1` in the init commands).
+Battery management via header `704`, response from `784`. Init: `ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATAT1 ATAL ATCRA784 ATFCSH704 ATFCSD300000 ATFCSM1`.
+**Important:** `ATFCSM1` (user-defined flow control) only works if `ATFCSH` **and** `ATFCSD` are set first. The WiCAN profile (and our profile up to 0.3.10) lacks `ATFCSD300000` – the ELM327 then rejects `ATFCSM1`, sends the flow control to the wrong address (`77C` instead of `704`) and multi-frame responses never complete. Since 0.3.11 stored profiles are repaired automatically.
 The basis is the WiCAN profile `xpeng_g6.json`, corrected according to [XPCarData](https://github.com/stevelea/xpcardata), where the values were verified on a G6:
 
 - **SoH** is at `22110A`. WiCAN lists `22011A`, which is most likely a typo.
@@ -135,6 +136,7 @@ WiCAN counts the bytes of the raw CAN frames including the ISO-TP control bytes;
 | `obd2mqtt/voltage_12v` | 12 V voltage measured at the dongle |
 | `obd2mqtt/car` | `online` / `offline` – dongle reachable |
 | `obd2mqtt/polling` | `ON` / `OFF` – main switch for automatic polling; switch it via `obd2mqtt/polling/set` (in HA: switch "Polling") |
+| `obd2mqtt/battery_low` | `ON` / `OFF` – 12 V battery below the warning threshold (default 12.0 V) |
 | `obd2mqtt/car_awake` | `ON` / `OFF` – car awake (12 V above the sleep threshold, i.e. DC/DC converter active) |
 | `obd2mqtt/ble_rssi` | BLE signal strength |
 | `obd2mqtt/last_error` | last error |

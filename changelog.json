@@ -1,5 +1,85 @@
 [
  {
+  "v": "0.3.14",
+  "de": [
+   "Fix: Im Schlafmodus stand trotzdem jede Minute „BLE getrennt (Grund 0x216)“ im Log – füllte das Log in ca. 4 Stunden und verdrängte ältere Einträge"
+  ],
+  "en": [
+   "Fix: in sleep mode “BLE disconnected (reason 0x216)” was still logged every minute – filled the log in about 4 hours and pushed out older entries"
+  ]
+ },
+ {
+  "v": "0.3.13",
+  "de": [
+   "Weniger Speicherbedarf: Log-Download und Diagnose-Bericht werden stückweise (je 1 KB) gesendet statt komplett im RAM aufgebaut – bisher kostete „Herunterladen/Kopieren“ kurzzeitig bis zu ~40 KB Heap (gemessenes Minimum 25 KB)",
+   "Diagnose-Bericht wird über /api/diag abgerufen (nicht mehr im Job-JSON)"
+  ],
+  "en": [
+   "Lower memory use: log download and diagnostic report are sent in 1 KB chunks instead of being built completely in RAM – previously “Download/Copy” briefly needed up to ~40 KB of heap (measured minimum 25 KB)",
+   "Diagnostic report is fetched via /api/diag (no longer inside the job JSON)"
+  ]
+ },
+ {
+  "v": "0.3.12",
+  "de": [
+   "Neu: Diagnose-Bericht (Status → Diagnose) – frische Verbindung, jede Init-Antwort (abgelehnte Befehle markiert), ATI/AT@1/ATRV/ATDPN, jede Abfrage des Profils mit Rohantwort, Antwortzeit, Bytes mit Index und berechneten Werten, Zusammenfassung; Kopieren/Herunterladen; ohne WLAN-, IP- und Passwortdaten (Dongle-MAC gekürzt)",
+   "Neu: Diagnose-Log für 2 Stunden – jede Anfrage mit Rohantwort, Init-Antworten, Spannung/Protokoll/MTU bei jeder Verbindung; schaltet sich selbst ab",
+   "Init-Befehle, die der Dongle ablehnt („?“), stehen jetzt immer im Log",
+   "Handbuch: Anleitung „Diagnose-Bericht für Beta-Tester“"
+  ],
+  "en": [
+   "New: diagnostic report (Status → Diagnostics) – fresh connection, every init response (rejected commands marked), ATI/AT@1/ATRV/ATDPN, every query of the profile with raw response, response time, indexed bytes and calculated values, summary; copy/download; without WiFi, IP and password data (dongle MAC shortened)",
+   "New: diagnostic log for 2 hours – every request with raw response, init responses, voltage/protocol/MTU on each connection; switches itself off",
+   "Init commands rejected by the dongle (“?”) are now always logged",
+   "Manual: guide “Diagnostic report for beta testers”"
+  ]
+ },
+ {
+  "v": "0.3.11",
+  "de": [
+   "XPeng G6/G9/P7+: Init-Sequenz korrigiert – ATFCSD300000 vor ATFCSM1 ergänzt (sonst lehnt der ELM327 die eigene Flow-Control ab und mehrteilige Antworten bleiben aus; Fehler aus dem WiCAN-Profil), dazu ATAL",
+   "Gespeicherte Profile werden beim Start automatisch repariert (fehlendes ATFCSD ergänzt, 7DF-Abfragen bei festem Empfangsfilter ATCRA abgeschaltet) – Hinweis im Log",
+   "XPeng-Werksprofile: „SoC (OBD2 Standard)“ entfernt – konnte wegen des Empfangsfilters auf 784 nie antworten",
+   "Schlafmodus mit Hysterese wie bei WiCAN: schlafen unter der Schwelle, wach erst ab Schwelle + 0,1 V",
+   "Abfrage im Schlaf (alle N min) nur noch über 11,9 V",
+   "Neu: 12V-Warnung – Home-Assistant-Sensor „12V niedrig“ (<base>/battery_low) unter einstellbarer Schwelle (Standard 12,0 V)"
+  ],
+  "en": [
+   "XPeng G6/G9/P7+: init sequence fixed – ATFCSD300000 added before ATFCSM1 (otherwise the ELM327 rejects the user-defined flow control and multi-frame responses never arrive; bug from the WiCAN profile), plus ATAL",
+   "Stored profiles are repaired automatically at startup (missing ATFCSD added, 7DF queries disabled when a fixed receive filter ATCRA is set) – noted in the log",
+   "XPeng factory profiles: “SoC (OBD2 standard)” removed – it could never answer because of the receive filter on 784",
+   "Sleep mode with hysteresis like WiCAN: sleep below the threshold, awake only from threshold + 0.1 V",
+   "Polling while asleep (every N min) only above 11.9 V",
+   "New: 12V warning – Home Assistant sensor “12V low” (<base>/battery_low) below an adjustable threshold (default 12.0 V)"
+  ]
+ },
+ {
+  "v": "0.3.10",
+  "de": [
+   "BLE: größere Pakete (MTU 247) und kürzeres Verbindungsintervall – mehr Durchsatz gegen „Unvollständige Antwort“ bei langen Antworten und schwachem Signal; MTU steht im Log",
+   "Schlafmodus: die minütliche Spannungsprüfung schreibt nicht mehr jedes Mal „BLE verbunden/getrennt“ ins Log (weniger Flash-Schreibzugriffe)",
+   "IONIQ-5-Werksprofil: „AC-Stecker“ entfernt – bleibt auch mit gestecktem Ladekabel 0; bestehende Profile: Wert abschalten oder löschen"
+  ],
+  "en": [
+   "BLE: larger packets (MTU 247) and shorter connection interval – more throughput against “Incomplete response” with long responses and weak signal; MTU is shown in the log",
+   "Sleep mode: the check every minute no longer writes “BLE connected/disconnected” to the log each time (fewer flash writes)",
+   "IONIQ 5 factory profile: “AC plug” removed – stays 0 even with the charging cable plugged in; existing profiles: disable or delete the value"
+  ]
+ },
+ {
+  "v": "0.3.9",
+  "de": [
+   "IONIQ-5-Werksprofil: „Laden aktiv BMS“ (220106) entfernt – das Bit ist auch ohne Ladekabel 1, sobald das Auto wach ist (12-V-Nachladung); bestehende Profile: Wert abschalten oder löschen",
+   "Schlafmodus: Kann die 12-V-Spannung nicht gelesen werden, bleibt ein schlafendes Auto in Ruhe (bisher wurde dann abgefragt und das Auto geweckt)",
+   "Log zeigt, wenn „Jetzt abfragen“ ein schlafendes Auto weckt"
+  ],
+  "en": [
+   "IONIQ 5 factory profile: “Charging BMS” (220106) removed – the bit is 1 whenever the car is awake (12 V top-up), even without a charging cable; existing profiles: disable or delete the value",
+   "Sleep mode: if the 12 V voltage cannot be read, a sleeping car is left alone (previously it was polled and woken up)",
+   "Log shows when “Poll now” wakes a sleeping car"
+  ]
+ },
+ {
   "v": "0.3.8",
   "de": [
    "Neu: Hauptschalter „Abfrage EIN/AUS“ – auf der Status-Seite und in Home Assistant als Schalter (<base>/polling, Befehl an <base>/polling/set). Bei AUS verbindet sich die Bridge nicht mehr mit dem Auto; Test, Terminal und „Jetzt abfragen“ funktionieren weiter. Die Einstellung bleibt nach einem Neustart erhalten",

@@ -10,6 +10,8 @@ void logSetPersist(bool on);
 bool logPersist();
 void logFlush();                  // ausstehende Zeilen in die Datei schreiben (aus loop())
 void logClear();
-bool logReadFile(bool old, String& out);   // Log-Datei lesen (thread-sicher)
+bool logReadFile(bool old, String& out);
+size_t logReadChunk(bool old, size_t offset, uint8_t* buf, size_t maxLen);   // stückweise lesen (wenig RAM)
+bool logFileExists(bool old);   // Log-Datei lesen (thread-sicher)
 void logBootCheck(uint32_t crashes);       // beim Start: Log-Dateien bei Absturzserie/vollem Flash entfernen
 bool timeValid();

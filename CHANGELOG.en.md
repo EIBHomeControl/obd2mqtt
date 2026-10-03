@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.14
+- Fix: in sleep mode “BLE disconnected (reason 0x216)” was still logged every minute – filled the log in about 4 hours and pushed out older entries
+
+## 0.3.13
+- Lower memory use: log download and diagnostic report are sent in 1 KB chunks instead of being built completely in RAM – previously “Download/Copy” briefly needed up to ~40 KB of heap (measured minimum 25 KB)
+- Diagnostic report is fetched via /api/diag (no longer inside the job JSON)
+
+## 0.3.12
+- New: diagnostic report (Status → Diagnostics) – fresh connection, every init response (rejected commands marked), ATI/AT@1/ATRV/ATDPN, every query of the profile with raw response, response time, indexed bytes and calculated values, summary; copy/download; without WiFi, IP and password data (dongle MAC shortened)
+- New: diagnostic log for 2 hours – every request with raw response, init responses, voltage/protocol/MTU on each connection; switches itself off
+- Init commands rejected by the dongle (“?”) are now always logged
+- Manual: guide “Diagnostic report for beta testers”
+
+## 0.3.11
+- XPeng G6/G9/P7+: init sequence fixed – ATFCSD300000 added before ATFCSM1 (otherwise the ELM327 rejects the user-defined flow control and multi-frame responses never arrive; bug from the WiCAN profile), plus ATAL
+- Stored profiles are repaired automatically at startup (missing ATFCSD added, 7DF queries disabled when a fixed receive filter ATCRA is set) – noted in the log
+- XPeng factory profiles: “SoC (OBD2 standard)” removed – it could never answer because of the receive filter on 784
+- Sleep mode with hysteresis like WiCAN: sleep below the threshold, awake only from threshold + 0.1 V
+- Polling while asleep (every N min) only above 11.9 V
+- New: 12V warning – Home Assistant sensor “12V low” (<base>/battery_low) below an adjustable threshold (default 12.0 V)
+
+## 0.3.10
+- BLE: larger packets (MTU 247) and shorter connection interval – more throughput against “Incomplete response” with long responses and weak signal; MTU is shown in the log
+- Sleep mode: the check every minute no longer writes “BLE connected/disconnected” to the log each time (fewer flash writes)
+- IONIQ 5 factory profile: “AC plug” removed – stays 0 even with the charging cable plugged in; existing profiles: disable or delete the value
+
+## 0.3.9
+- IONIQ 5 factory profile: “Charging BMS” (220106) removed – the bit is 1 whenever the car is awake (12 V top-up), even without a charging cable; existing profiles: disable or delete the value
+- Sleep mode: if the 12 V voltage cannot be read, a sleeping car is left alone (previously it was polled and woken up)
+- Log shows when “Poll now” wakes a sleeping car
+
 ## 0.3.8
 - New: main switch “Polling ON/OFF” – on the status page and in Home Assistant as a switch (<base>/polling, command to <base>/polling/set). When OFF the bridge no longer connects to the car; Test, terminal and “Poll now” keep working. The setting survives a restart
 - New: let the car sleep – if the 12 V voltage is below 13.2 V (car off, not charging), no requests are sent to the car, only the voltage at the dongle is measured. Previously polling every 2 min kept waking the IONIQ 5 (12 V jumped to 14.7 V each time)

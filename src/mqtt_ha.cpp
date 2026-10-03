@@ -116,6 +116,13 @@ static void sendDiscovery() {
     d["icon"] = "mdi:car-electric";
     publishConfig("binary_sensor", "car_awake", d);
   } else { JsonDocument empty; publishConfig("binary_sensor", "car_awake", empty); }
+  if (cfg.lowBattVoltage > 0) { // 12V-Warnung
+    JsonDocument d;
+    d["name"] = T("12V niedrig", "12V low");
+    d["state_topic"] = topic("battery_low");
+    d["device_class"] = "battery";   // ON = niedrig
+    publishConfig("binary_sensor", "battery_low", d);
+  } else { JsonDocument empty; publishConfig("binary_sensor", "battery_low", empty); }
   { // Hauptschalter Abfrage
     JsonDocument d;
     d["name"] = T("Abfrage", "Polling");

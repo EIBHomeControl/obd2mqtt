@@ -32,7 +32,8 @@ struct AppConfig {
   bool pollEnabled = true;              // Hauptschalter: automatische Abfrage ein/aus
   float minVoltage = 12.2f;             // 12V-Schutz, 0 = aus
   float sleepVoltage = 13.2f;           // darunter gilt das Auto als schlafend → keine CAN-Abfragen (0 = aus)
-  uint32_t sleepPollMin = 0;            // trotzdem abfragen, während das Auto schläft: alle N min (0 = nie)
+  uint32_t sleepPollMin = 0;
+  float lowBattVoltage = 12.0f;         // 12V-Warnung (HA-Sensor „12V niedrig“), 0 = aus            // trotzdem abfragen, während das Auto schläft: alle N min (0 = nie)
   uint32_t retrySec = 60;               // Pause nach fehlgeschlagener BLE-Verbindung
   uint32_t cmdTimeoutMs = 3000;
   bool keepConnected = false;           // BLE zwischen den Abfragen halten
@@ -68,6 +69,7 @@ extern Profile profile;
 bool fsBegin();
 bool loadConfig();
 bool saveConfig();
+void migrateProfiles();              // gespeicherte Profile reparieren (z. B. fehlendes ATFCSD)
 void configToJson(JsonDocument& doc, bool maskSecrets);
 void configFromJson(JsonVariantConst src);   // "********" = Wert unverändert lassen
 

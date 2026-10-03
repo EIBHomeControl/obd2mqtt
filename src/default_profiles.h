@@ -46,12 +46,6 @@ static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
     { "id": "charging_dc", "name": "DC-Laden (experimentell)", "name_en": "DC charging (experimental)", "header": "7E4", "cmd": "220101",
       "formula": "bit(B12,6)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
-      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
-    { "id": "ac_plug", "name": "AC-Stecker (experimentell)", "name_en": "AC plug (experimental)", "header": "7E4", "cmd": "220101",
-      "formula": "bit(B12,5)", "icon": "mdi:ev-plug-type2", "state_class": "",
-      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
-    { "id": "charging_bms", "name": "Laden aktiv BMS (experimentell)", "name_en": "Charging BMS (experimental)", "header": "7E4", "cmd": "220106",
-      "formula": "bit(B27,0)", "icon": "mdi:battery-charging", "state_class": "",
       "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true }
   ]
 })JSON";
@@ -63,7 +57,7 @@ static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
 static const char PROFILE_G9[] PROGMEM = R"JSON({
   "name": "XPeng G9",
   "model": "XPeng G9",
-  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATCRA784", "ATFCSH704", "ATFCSM1"],
+  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATAL", "ATCRA784", "ATFCSH704", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "704", "cmd": "221109",
       "formula": "u16(B3,B4)/10", "unit": "%", "device_class": "battery",
@@ -100,10 +94,7 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true },
-    { "id": "soc_obd", "name": "SoC (OBD2 Standard)", "name_en": "SoC (OBD2 standard)", "header": "7DF", "cmd": "015B",
-      "formula": "B2*100/255", "unit": "%", "device_class": "battery",
-      "interval": 120, "min": 0, "max": 100, "precision": 0, "enabled": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true }
   ]
 })JSON";
 // XPeng G6 – gleiche BMS-PIDs wie G9 (704/784). Die Werte von XPCarData sind am G6 verifiziert.
@@ -111,7 +102,7 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
 static const char PROFILE_G6[] PROGMEM = R"JSON({
   "name": "XPeng G6",
   "model": "XPeng G6",
-  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATCRA784", "ATFCSH704", "ATFCSM1"],
+  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATAL", "ATCRA784", "ATFCSH704", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "704", "cmd": "221109",
       "formula": "u16(B3,B4)/10", "unit": "%", "device_class": "battery",
@@ -148,10 +139,7 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true },
-    { "id": "soc_obd", "name": "SoC (OBD2 Standard)", "name_en": "SoC (OBD2 standard)", "header": "7DF", "cmd": "015B",
-      "formula": "B2*100/255", "unit": "%", "device_class": "battery",
-      "interval": 120, "min": 0, "max": 100, "precision": 0, "enabled": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true }
   ]
 })JSON";
 
@@ -160,7 +148,7 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
 static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
   "name": "XPeng P7+ (experimentell)", "name_en": "XPeng P7+ (experimental)",
   "model": "XPeng P7+",
-  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATCRA784", "ATFCSH704", "ATFCSM1"],
+  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATAL", "ATCRA784", "ATFCSH704", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "704", "cmd": "221109",
       "formula": "u16(B3,B4)/10", "unit": "%", "device_class": "battery",
@@ -197,10 +185,7 @@ static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true },
-    { "id": "soc_obd", "name": "SoC (OBD2 Standard)", "name_en": "SoC (OBD2 standard)", "header": "7DF", "cmd": "015B",
-      "formula": "B2*100/255", "unit": "%", "device_class": "battery",
-      "interval": 120, "min": 0, "max": 100, "precision": 0, "enabled": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true }
   ]
 })JSON";
 

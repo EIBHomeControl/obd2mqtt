@@ -1,5 +1,36 @@
 # Changelog
 
+## 0.3.14
+- Fix: Im Schlafmodus stand trotzdem jede Minute „BLE getrennt (Grund 0x216)“ im Log – füllte das Log in ca. 4 Stunden und verdrängte ältere Einträge
+
+## 0.3.13
+- Weniger Speicherbedarf: Log-Download und Diagnose-Bericht werden stückweise (je 1 KB) gesendet statt komplett im RAM aufgebaut – bisher kostete „Herunterladen/Kopieren“ kurzzeitig bis zu ~40 KB Heap (gemessenes Minimum 25 KB)
+- Diagnose-Bericht wird über /api/diag abgerufen (nicht mehr im Job-JSON)
+
+## 0.3.12
+- Neu: Diagnose-Bericht (Status → Diagnose) – frische Verbindung, jede Init-Antwort (abgelehnte Befehle markiert), ATI/AT@1/ATRV/ATDPN, jede Abfrage des Profils mit Rohantwort, Antwortzeit, Bytes mit Index und berechneten Werten, Zusammenfassung; Kopieren/Herunterladen; ohne WLAN-, IP- und Passwortdaten (Dongle-MAC gekürzt)
+- Neu: Diagnose-Log für 2 Stunden – jede Anfrage mit Rohantwort, Init-Antworten, Spannung/Protokoll/MTU bei jeder Verbindung; schaltet sich selbst ab
+- Init-Befehle, die der Dongle ablehnt („?“), stehen jetzt immer im Log
+- Handbuch: Anleitung „Diagnose-Bericht für Beta-Tester“
+
+## 0.3.11
+- XPeng G6/G9/P7+: Init-Sequenz korrigiert – ATFCSD300000 vor ATFCSM1 ergänzt (sonst lehnt der ELM327 die eigene Flow-Control ab und mehrteilige Antworten bleiben aus; Fehler aus dem WiCAN-Profil), dazu ATAL
+- Gespeicherte Profile werden beim Start automatisch repariert (fehlendes ATFCSD ergänzt, 7DF-Abfragen bei festem Empfangsfilter ATCRA abgeschaltet) – Hinweis im Log
+- XPeng-Werksprofile: „SoC (OBD2 Standard)“ entfernt – konnte wegen des Empfangsfilters auf 784 nie antworten
+- Schlafmodus mit Hysterese wie bei WiCAN: schlafen unter der Schwelle, wach erst ab Schwelle + 0,1 V
+- Abfrage im Schlaf (alle N min) nur noch über 11,9 V
+- Neu: 12V-Warnung – Home-Assistant-Sensor „12V niedrig“ (<base>/battery_low) unter einstellbarer Schwelle (Standard 12,0 V)
+
+## 0.3.10
+- BLE: größere Pakete (MTU 247) und kürzeres Verbindungsintervall – mehr Durchsatz gegen „Unvollständige Antwort“ bei langen Antworten und schwachem Signal; MTU steht im Log
+- Schlafmodus: die minütliche Spannungsprüfung schreibt nicht mehr jedes Mal „BLE verbunden/getrennt“ ins Log (weniger Flash-Schreibzugriffe)
+- IONIQ-5-Werksprofil: „AC-Stecker“ entfernt – bleibt auch mit gestecktem Ladekabel 0; bestehende Profile: Wert abschalten oder löschen
+
+## 0.3.9
+- IONIQ-5-Werksprofil: „Laden aktiv BMS“ (220106) entfernt – das Bit ist auch ohne Ladekabel 1, sobald das Auto wach ist (12-V-Nachladung); bestehende Profile: Wert abschalten oder löschen
+- Schlafmodus: Kann die 12-V-Spannung nicht gelesen werden, bleibt ein schlafendes Auto in Ruhe (bisher wurde dann abgefragt und das Auto geweckt)
+- Log zeigt, wenn „Jetzt abfragen“ ein schlafendes Auto weckt
+
 ## 0.3.8
 - Neu: Hauptschalter „Abfrage EIN/AUS“ – auf der Status-Seite und in Home Assistant als Schalter (<base>/polling, Befehl an <base>/polling/set). Bei AUS verbindet sich die Bridge nicht mehr mit dem Auto; Test, Terminal und „Jetzt abfragen“ funktionieren weiter. Die Einstellung bleibt nach einem Neustart erhalten
 - Neu: Auto schlafen lassen – liegt die 12-V-Spannung unter 13,2 V (Auto aus, lädt nicht), werden keine Anfragen mehr ans Auto geschickt, nur noch die Spannung am Dongle gemessen. Bisher hat die Abfrage alle 2 min den IONIQ 5 immer wieder geweckt (12 V sprang jedes Mal auf 14,7 V)

@@ -175,9 +175,9 @@ void begin() {
     JsonDocument d;
     if (deserializeJson(d, body(r))) return sendMsg(r, false, T("Ungültiges JSON", "Invalid JSON"));
     String t = d["type"] | "";
-    Poller::JobType jt = t == "scan" ? Poller::JOB_SCAN : t == "test" ? Poller::JOB_TEST : Poller::JOB_RAW;
+    Poller::JobType jt = t == "scan" ? Poller::JOB_SCAN : t == "test" ? Poller::JOB_TEST : t == "diag" ? Poller::JOB_DIAG : Poller::JOB_RAW;
     String cmd = d["cmd"] | "";
-    if (jt != Poller::JOB_SCAN && cmd.isEmpty()) return sendMsg(r, false, T("Befehl fehlt", "Command missing"));
+    if (jt != Poller::JOB_SCAN && jt != Poller::JOB_DIAG && cmd.isEmpty()) return sendMsg(r, false, T("Befehl fehlt", "Command missing"));
     if (Poller::isPaused()) return sendMsg(r, false, T("Im sicheren Modus / während eines Updates nicht verfügbar", "Not available in safe mode / during an update"), 409);
     if (!Poller::submitJob(jt, d["header"] | "", cmd, d["formula"] | ""))
       return sendMsg(r, false, T("Es läuft bereits ein Auftrag", "Another job is already running"), 409);
@@ -235,10 +235,12 @@ void begin() {
     logFlush();
     // Datei unter Sperre komplett lesen (max. ~20 KB) statt zu streamen – sonst kann die Hauptschleife
     // die Datei während der Übertragung rotieren/löschen (Absturzursache bis 0.3.5)
-    String txt;
+    // Stückweise aus dem Flash senden (je max. 1 KB unter Sperre) – kein großer RAM-Puffer
     AsyncWebServerResponse* res;
-    if (logPersist() && logReadFile(old, txt)) {
-      res = r->beginResponse(200, "text/plain; charset=utf-8", txt);
+    if (logPersist() && logFileExists(old)) {
+      res = r->beginChunkedResponse("text/plain; charset=utf-8", [old](uint8_t* buf, size_t maxLen, size_t index) -> size_t {
+        return logReadChunk(old, index, buf, maxLen);
+      });
     } else if (old) {
       return sendMsg(r, false, T("Kein älteres Log vorhanden", "No older log available"), 404);
     } else {
@@ -337,6 +339,23 @@ void begin() {
     if (!auth(r)) return;
     Poller::requestPollNow();
     sendMsg(r, true, T("Abfrage angestoßen", "Poll triggered"));
+  });
+
+  server.on("/api/diag", HTTP_GET, [](AsyncWebServerRequest* r) {
+    if (!auth(r)) return;
+    AsyncWebServerResponse* res = r->beginChunkedResponse("text/plain; charset=utf-8", [](uint8_t* buf, size_t maxLen, size_t index) -> size_t {
+      return Poller::diagChunk(index, buf, maxLen);
+    });
+    if (r->hasParam("dl")) res->addHeader("Content-Disposition", "attachment; filename=\"obd2mqtt-diagnose.txt\"");
+    r->send(res);
+  });
+
+  server.on("/api/debug", HTTP_POST, [](AsyncWebServerRequest* r) {
+    if (!auth(r)) return;
+    uint32_t m = r->hasParam("min") ? r->getParam("min")->value().toInt() : 0;
+    if (m > 720) m = 720;
+    Poller::setDebug(m);
+    sendMsg(r, true, m ? T("Diagnose-Log eingeschaltet", "Diagnostic log switched on") : T("Diagnose-Log ausgeschaltet", "Diagnostic log switched off"));
   });
 
   server.on("/api/polling", HTTP_POST, [](AsyncWebServerRequest* r) {

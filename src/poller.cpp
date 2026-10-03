@@ -1,3 +1,4 @@
+#include "watchdog.h"
 #include <map>
 #include <LittleFS.h>
 #include "poller.h"
@@ -49,6 +50,7 @@ struct Job {
   String header, cmd, formula;
   String state = "idle";
   String resultJson;
+  String progress;
 };
 static Job job;
 static uint32_t lastJobMs = 0;      // nach Test/Terminal Verbindung noch 60 s halten
@@ -90,6 +92,24 @@ static bool elmCmd(const String& c, String& resp, uint32_t timeout = 0) {
   return ok;
 }
 
+// ---------- Diagnose ----------
+static volatile uint32_t debugUntil = 0;
+static bool debugOn() { return debugUntil && (int32_t)(millis() - debugUntil) < 0; }
+void setDebug(uint32_t minutes) {
+  debugUntil = minutes ? millis() + minutes * 60000UL : 0;
+  if (minutes) logf(T("Diagnose-Log an (%lu min)", "Diagnostic log on (%lu min)"), (unsigned long)minutes);
+  else logf("%s", T("Diagnose-Log aus", "Diagnostic log off"));
+}
+static String oneLine(const String& s, size_t maxLen = 300) {
+  String r = s;
+  r.replace("\r", "|");
+  r.replace("\n", "");
+  while (r.endsWith("|")) r.remove(r.length() - 1);
+  if (r.length() > maxLen) r = r.substring(0, maxLen) + "…";
+  return r;
+}
+static bool rejected(const String& r) { return r.indexOf('?') >= 0 || r.indexOf("ERROR") >= 0; }
+
 static bool ensureReady(String& err) {
   if (!ElmBle::connected()) {
     elmReady = false;
@@ -101,7 +121,9 @@ static bool ensureReady(String& err) {
     String r;
     for (auto& c : profile.init) {
       bool ok = elmCmd(c, r, c.startsWith("ATZ") || c.startsWith("AT Z") ? 4000 : 0);
-      if (!ok) logf(T("Init '%s' ohne Prompt (Antwort: %s)", "Init '%s' without prompt (response: %s)"), c.c_str(), r.c_str());
+      if (!ok) logf(T("Init '%s' ohne Prompt (Antwort: %s)", "Init '%s' without prompt (response: %s)"), c.c_str(), oneLine(r).c_str());
+      else if (rejected(r)) logf(T("Init '%s' vom Dongle abgelehnt (Antwort: %s)", "Init '%s' rejected by the dongle (response: %s)"), c.c_str(), oneLine(r).c_str());
+      else if (debugOn()) logf("[diag] %s → %s", c.c_str(), oneLine(r, 60).c_str());
       if (c.startsWith("ATZ")) delay(300);
     }
     currentHeader = "";
@@ -109,6 +131,11 @@ static bool ensureReady(String& err) {
     // CAN-Telegramm "CAN ERROR" bzw. abgeschnittene Antworten.
     delay(300);
     elmCmd("ATRV", r);
+    if (debugOn()) {
+      String dp;
+      elmCmd("ATDPN", dp);
+      logf("[diag] ATRV → %s, ATDPN → %s, MTU %u", oneLine(r, 20).c_str(), oneLine(dp, 20).c_str(), (unsigned)ElmBle::mtu());
+    }
     if (elmCmd("ATI", r) && r.length() && r.length() < 40) {   // z.B. "ELM327 v1.5"
       r.replace("\r", " "); r.trim();
       std::lock_guard<std::mutex> lk(mtx);
@@ -160,6 +187,7 @@ static bool query(const String& header, const String& cmd, std::vector<uint8_t>&
     bool ok = ObdParse::parseResponse(raw.c_str(), cmd.c_str(), bytes, e);
     err = e.c_str();
     lastQueryKind = ok ? ObdParse::ERR_NONE : ObdParse::lastErrKind;
+    if (debugOn()) logf("[diag] %s %s → %s%s", header.c_str(), cmd.c_str(), oneLine(raw, 400).c_str(), ok ? "" : (String(" [") + err + "]").c_str());
     if (ok) return true;
     // Wiederholen nur bei unvollständiger Antwort bzw. CAN-Fehler (typisch kurz nach dem Verbinden),
     // nicht bei NO DATA / negativer Antwort
@@ -250,10 +278,31 @@ static void pollDue() {
   // Jede CAN-Anfrage würde es wecken – dann nur die Spannung beobachten und nichts abfragen.
   bool force = forcePoll;
   forcePoll = false;
+  // Spannung nicht lesbar: letzten Zustand beibehalten (lieber nicht abfragen, als das Auto zu wecken)
+  if (cfg.sleepVoltage > 0 && isnan(v) && carAsleep && !force) {
+    if (!cfg.keepConnected) { ElmBle::disconnect(); elmReady = false; }
+    nextConnectTry = now + 60000UL;
+    return;
+  }
+  // 12V-Warnung (mit 0,2 V Hysterese), unabhängig vom Schlafmodus
+  if (cfg.lowBattVoltage > 0 && !isnan(v)) {
+    static int lowState = -1;
+    int ls = lowState;
+    if (v < cfg.lowBattVoltage) ls = 1;
+    else if (v >= cfg.lowBattVoltage + 0.2f) ls = 0;
+    else if (ls < 0) ls = 0;
+    if (ls != lowState) {
+      lowState = ls;
+      MqttHa::publishText("battery_low", ls ? "ON" : "OFF");
+      if (ls) logf(T("WARNUNG: 12-V-Batterie niedrig (%.1f V < %.1f V)", "WARNING: 12 V battery low (%.1f V < %.1f V)"), v, cfg.lowBattVoltage);
+    }
+  }
   if (cfg.sleepVoltage > 0 && !isnan(v)) {
-    bool asleep = v < cfg.sleepVoltage;
+    // Hysterese wie WiCAN: schlafen unter der Schwelle, wach erst ab Schwelle + 0,1 V
+    bool asleep = carAsleep ? (v < cfg.sleepVoltage + 0.1f) : (v < cfg.sleepVoltage);
     if (asleep != carAsleep) {
       carAsleep = asleep;
+      ElmBle::quiet = asleep;   // im Schlaf jede Minute verbinden → nicht jedes Mal loggen
       MqttHa::publishText("car_awake", asleep ? "OFF" : "ON");
       if (asleep)
         logf(T("Auto schläft (12V %.1f V < %.1f V) – keine Abfragen, damit es schlafen kann", "Car asleep (12V %.1f V < %.1f V) – no queries so it can sleep"), v, cfg.sleepVoltage);
@@ -261,7 +310,9 @@ static void pollDue() {
         logf(T("Auto wach (12V %.1f V) – normale Abfrage", "Car awake (12V %.1f V) – normal polling"), v);
     }
     if (asleep && !force) {
-      bool sleepPollDue = cfg.sleepPollMin > 0 && (lastSleepPoll == 0 || now - lastSleepPoll >= cfg.sleepPollMin * 60000UL);
+      // Periodisch wecken nur, wenn die 12-V-Batterie das verträgt (wie WiCAN: über 11,9 V)
+      bool sleepPollDue = cfg.sleepPollMin > 0 && v > 11.9f &&
+                          (lastSleepPoll == 0 || now - lastSleepPoll >= cfg.sleepPollMin * 60000UL);
       if (!sleepPollDue) {
         if (!cfg.keepConnected) { ElmBle::disconnect(); elmReady = false; }
         nextConnectTry = now + 60000UL;   // in 1 min wieder nur die Spannung prüfen (weckt das Auto nicht)
@@ -269,6 +320,8 @@ static void pollDue() {
       }
       lastSleepPoll = now;
       logf(T("Abfrage trotz Schlaf (alle %lu min)", "Polling while asleep (every %lu min)"), (unsigned long)cfg.sleepPollMin);
+    } else if (asleep && force) {
+      logf("%s", T("„Jetzt abfragen“ – Auto schläft, wird dafür geweckt", "“Poll now” – car is asleep and will be woken up"));
     }
   }
 
@@ -334,6 +387,136 @@ static void pollDue() {
 
 // ---------------------------------------------------------------
 
+static String diagText;   // letzter Diagnose-Bericht – über /api/diag abrufbar statt im Job-JSON (spart RAM)
+size_t diagChunk(size_t offset, uint8_t* buf, size_t maxLen) {
+  std::lock_guard<std::mutex> lk(mtx);
+  if (offset >= diagText.length()) return 0;
+  size_t n = min(min(maxLen, (size_t)1024), diagText.length() - offset);
+  memcpy(buf, diagText.c_str() + offset, n);
+  return n;
+}
+
+static void setProgress(const String& p) {
+  std::lock_guard<std::mutex> lk(mtx);
+  job.progress = p;
+}
+
+// Diagnose-Bericht: frische Verbindung, jede Init-Antwort, jede Abfrage mit Rohdaten und Bytes.
+// Enthält bewusst keine WLAN-/IP-/Passwortdaten, damit er öffentlich gepostet werden kann.
+static String diagReport() {
+  String o;
+  o.reserve(8000);
+  auto ln = [&](const String& s) { o += s; o += '\n'; };
+  ln("=== OBD2MQTT " + String(T("Diagnose-Bericht", "diagnostic report")) + " ===");
+  ln("Firmware: " FW_VERSION);
+  if (timeValid()) {
+    time_t tn = time(nullptr); struct tm tmv; localtime_r(&tn, &tmv);
+    char tb[32]; strftime(tb, sizeof(tb), "%Y-%m-%d %H:%M:%S", &tmv);
+    ln(String(T("Zeit: ", "Time: ")) + tb);
+  }
+  ln(String(T("Profil: ", "Profile: ")) + cfg.profile + " – " + profile.name + " (" + profile.model + ")");
+  String mac = cfg.bleMac.length() == 17 ? cfg.bleMac.substring(0, 8) + ":xx:xx:xx" : cfg.bleMac;
+  ln("Dongle: " + ElmBle::deviceName() + " / " + ElmBle::dongleKind() + " / " + mac);
+  if (!isnan(lastVoltage)) ln(String(T("12V (letzte Messung): ", "12V (last reading): ")) + String(lastVoltage, 1) + " V");
+
+  setProgress("BLE");
+  ElmBle::disconnect();
+  elmReady = false;
+  currentHeader = "";
+  String err;
+  if (!ElmBle::connect(err)) { ln(String(T("BLE-Verbindung fehlgeschlagen: ", "BLE connection failed: ")) + err); return o; }
+  ln("BLE: RSSI " + String(ElmBle::rssi()) + " dBm, MTU " + String(ElmBle::mtu()) + ", UUIDs " + ElmBle::detectedUuids());
+
+  ln("");
+  ln("--- Init ---");
+  int initBad = 0;
+  for (auto& c : profile.init) {
+    Watchdog::feed();
+    String r;
+    bool ok = elmCmd(c, r, c.startsWith("ATZ") || c.startsWith("AT Z") ? 4000 : 0);
+    if (c.startsWith("ATZ")) delay(300);
+    String flag = !ok ? T("   <-- KEIN PROMPT", "   <-- NO PROMPT") : rejected(r) ? T("   <-- ABGELEHNT", "   <-- REJECTED") : "";
+    if (flag.length()) initBad++;
+    ln(c + " → " + oneLine(r, 80) + flag);
+  }
+  delay(300);
+  for (const char* c : {"ATI", "AT@1", "ATRV", "ATDPN"}) {
+    Watchdog::feed();
+    String r;
+    elmCmd(c, r);
+    ln(String(c) + " → " + oneLine(r, 80));
+  }
+  elmReady = true;
+  {
+    std::lock_guard<std::mutex> lk(mtx);
+    lastConnectOk = millis();
+  }
+
+  ln("");
+  ln(String("--- ") + T("Abfragen", "Queries") + " ---");
+  std::vector<String> keys;
+  for (auto& p : profile.pids) {
+    String k = p.header + "|" + p.cmd;
+    bool dup = false;
+    for (auto& x : keys) if (x == k) dup = true;
+    if (!dup) keys.push_back(k);
+  }
+  int nOk = 0, nInc = 0, nFail = 0, idx = 0;
+  for (auto& k : keys) {
+    Watchdog::feed();
+    idx++;
+    setProgress(String(idx) + "/" + String(keys.size()));
+    String header = k.substring(0, k.indexOf('|')), cmd = k.substring(k.indexOf('|') + 1);
+    ln("");
+    ln("[" + header + " " + cmd + "]");
+    if (!setHeader(header)) { ln(T("  ATSH fehlgeschlagen", "  ATSH failed")); nFail++; continue; }
+    std::vector<uint8_t> bytes;
+    bool ok = false;
+    ObdParse::ErrKind kind = ObdParse::ERR_OTHER;
+    for (int a = 0; a < 3 && !ok; a++) {
+      Watchdog::feed();
+      if (a) delay(500);
+      String raw;
+      uint32_t t0 = millis();
+      bool prompt = elmCmd(cmd, raw);
+      uint32_t dt = millis() - t0;
+      std::string e;
+      ok = prompt && ObdParse::parseResponse(raw.c_str(), cmd.c_str(), bytes, e);
+      kind = prompt ? (ok ? ObdParse::ERR_NONE : ObdParse::lastErrKind) : ObdParse::ERR_OTHER;
+      ln("  " + String(T("Versuch ", "attempt ")) + String(a + 1) + " (" + String(dt) + " ms): " + oneLine(raw, 600) +
+         (ok ? "" : String("  [") + (prompt ? e.c_str() : T("kein Prompt", "no prompt")) + "]"));
+      if (!ok && !(kind == ObdParse::ERR_INCOMPLETE || kind == ObdParse::ERR_CAN)) break;
+    }
+    if (ok) {
+      nOk++;
+      String bl = "  Bytes (" + String(bytes.size()) + "):";
+      for (size_t i = 0; i < bytes.size(); i++) {
+        if (i % 8 == 0) { ln(bl); bl = "   "; }
+        char b[12]; snprintf(b, sizeof(b), " B%u=%02X", (unsigned)i, bytes[i]);
+        bl += b;
+      }
+      ln(bl);
+    } else if (kind == ObdParse::ERR_INCOMPLETE) nInc++;
+    else nFail++;
+    for (auto& p : profile.pids) {
+      if (p.header + "|" + p.cmd != k) continue;
+      String line = "  -> " + p.id + (p.enabled ? "" : T(" (aus)", " (off)")) + ": " + p.formula + " = ";
+      if (ok) {
+        double v; std::string e;
+        if (ObdParse::evalFormula(p.formula.c_str(), bytes, v, e)) line += String(v, p.precision) + " " + p.unit;
+        else line += String("[") + e.c_str() + "]";
+      } else line += "–";
+      ln(line);
+    }
+  }
+  ln("");
+  ln(String("--- ") + T("Zusammenfassung", "Summary") + " ---");
+  ln(String(T("Init-Probleme: ", "Init problems: ")) + initBad);
+  ln(String(T("Abfragen OK: ", "Queries OK: ")) + nOk + " / " + keys.size() + ", " + T("unvollständig: ", "incomplete: ") + nInc +
+     ", " + T("ohne Antwort/Fehler: ", "no answer/error: ") + nFail);
+  return o;
+}
+
 static void runJob() {
   Job j;
   {
@@ -343,7 +526,18 @@ static void runJob() {
     j = job;
   }
   JsonDocument r;
-  if (j.type == JOB_SCAN) {
+  if (j.type == JOB_DIAG) {
+    logf("%s", T("Diagnose-Bericht wird erstellt…", "Creating diagnostic report…"));
+    String rep = diagReport();
+    r["len"] = rep.length();
+    {
+      std::lock_guard<std::mutex> lk(mtx);
+      diagText = "";          // alten Bericht zuerst freigeben
+      diagText = std::move(rep);
+    }
+    r["ok"] = true;
+    logf("%s", T("Diagnose-Bericht fertig", "Diagnostic report done"));
+  } else if (j.type == JOB_SCAN) {
     ElmBle::disconnect();
     elmReady = false;
     auto list = ElmBle::scan(6000);
@@ -404,12 +598,14 @@ bool submitJob(JobType t, const String& header, const String& cmd, const String&
   job.formula = formula;
   job.state = "pending";
   job.resultJson = "";
+  job.progress = "";
   return true;
 }
 
 void jobJson(JsonDocument& d) {
   std::lock_guard<std::mutex> lk(mtx);
   d["state"] = job.state;
+  if (job.progress.length() && job.state == "running") d["progress"] = job.progress;
   if (job.resultJson.length()) {
     JsonDocument r;
     deserializeJson(r, job.resultJson);
@@ -587,6 +783,7 @@ void statusJson(JsonDocument& d) {
   if (!isnan(lastVoltage)) d["voltage"] = lastVoltage;
   d["car_asleep"] = cfg.sleepVoltage > 0 && carAsleep;
   d["poll_enabled"] = cfg.pollEnabled;
+  d["debug_min"] = debugOn() ? (uint32_t)((debugUntil - millis()) / 60000UL) + 1 : 0;
   d["profile"] = cfg.profile;
   d["profile_name"] = profile.name;
   d["last_error"] = lastError;

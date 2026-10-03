@@ -2,6 +2,7 @@
 #include <LittleFS.h>
 #include "default_profiles.h"
 #include "i18n.h"
+#include "log.h"
 
 AppConfig cfg;
 Profile profile;
@@ -13,7 +14,53 @@ bool fsBegin() {
   if (!LittleFS.begin(true)) return false;   // formatiert bei Bedarf
   if (!LittleFS.exists("/profiles")) LittleFS.mkdir("/profiles");
   installDefaultProfiles(false);
+  migrateProfiles();
   return true;
+}
+
+// Gespeicherte Profile reparieren (ab 0.3.11):
+//  - ATFCSM1 ohne ATFCSD: der ELM327 lehnt Flow-Control-Modus 1 dann ab ("?"), die Flow-Control geht an
+//    die falsche Adresse und mehrteilige Antworten bleiben aus (Fehler im WiCAN-XPeng-Profil, von uns übernommen)
+//  - 7DF-Abfragen bei festem Empfangsfilter (ATCRA) können nie antworten → abschalten
+void migrateProfiles() {
+  for (auto& name : listProfiles()) {
+    String raw = readProfileRaw(name);
+    JsonDocument d;
+    if (raw.isEmpty() || deserializeJson(d, raw)) continue;
+    JsonArray init = d["init"].as<JsonArray>();
+    if (init.isNull()) continue;
+    bool changed = false, hasFcsd = false, hasCra = false;
+    int fcsm1 = -1, i = 0;
+    for (JsonVariant v : init) {
+      String c = v.as<String>();
+      c.toUpperCase();
+      c.replace(" ", "");
+      if (c.startsWith("ATFCSD")) hasFcsd = true;
+      if (c.startsWith("ATCRA") && c.length() > 5) hasCra = true;
+      if (c == "ATFCSM1" && fcsm1 < 0) fcsm1 = i;
+      i++;
+    }
+    if (fcsm1 >= 0 && !hasFcsd) {
+      JsonDocument n;
+      JsonArray na = n.to<JsonArray>();
+      int k = 0;
+      for (JsonVariant v : init) { if (k++ == fcsm1) na.add("ATFCSD300000"); na.add(v.as<String>()); }
+      d["init"] = na;
+      changed = true;
+    }
+    if (hasCra) {
+      for (JsonObject o : d["pids"].as<JsonArray>()) {
+        String h = o["header"] | "";
+        h.toUpperCase();
+        if (h == "7DF" && (o["enabled"] | true)) { o["enabled"] = false; changed = true; }
+      }
+    }
+    if (changed) {
+      File f = LittleFS.open(String("/profiles/") + name + ".json", "w");
+      if (f) { serializeJsonPretty(d, f); f.close(); }
+      logf(T("Profil '%s' repariert (Flow-Control ATFCSD ergänzt bzw. 7DF-Abfrage abgeschaltet)", "Profile '%s' repaired (flow control ATFCSD added or 7DF query disabled)"), name.c_str());
+    }
+  }
 }
 
 bool validProfileName(const String& n) {
@@ -73,6 +120,7 @@ void configToJson(JsonDocument& d, bool mask) {
   d["min_voltage"] = cfg.minVoltage;
   d["sleep_voltage"] = cfg.sleepVoltage;
   d["sleep_poll_min"] = cfg.sleepPollMin;
+  d["low_batt_voltage"] = cfg.lowBattVoltage;
   d["retry_sec"] = cfg.retrySec;
   d["cmd_timeout_ms"] = cfg.cmdTimeoutMs;
   d["keep_connected"] = cfg.keepConnected;
@@ -121,6 +169,7 @@ void configFromJson(JsonVariantConst s) {
   if (s["poll_enabled"].is<bool>()) cfg.pollEnabled = s["poll_enabled"];
   if (s["min_voltage"].is<float>()) cfg.minVoltage = s["min_voltage"];
   if (s["sleep_voltage"].is<float>()) cfg.sleepVoltage = constrain(s["sleep_voltage"].as<float>(), 0.0f, 16.0f);
+  if (s["low_batt_voltage"].is<float>()) cfg.lowBattVoltage = constrain(s["low_batt_voltage"].as<float>(), 0.0f, 15.0f);
   if (s["sleep_poll_min"].is<int>()) cfg.sleepPollMin = max(0, s["sleep_poll_min"].as<int>());
   if (s["retry_sec"].is<int>()) cfg.retrySec = max(10, s["retry_sec"].as<int>());
   if (s["cmd_timeout_ms"].is<int>()) cfg.cmdTimeoutMs = constrain(s["cmd_timeout_ms"].as<int>(), 500, 15000);

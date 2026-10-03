@@ -139,6 +139,7 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <tr><td>Abfrage EIN/AUS</td><td>Hauptschalter auf der Status-Seite (und in Home Assistant als Schalter „Abfrage“). Bei AUS verbindet sich die Bridge nicht mehr mit dem Auto – z. B. in der Werkstatt oder bei langer Standzeit. Test, Terminal und „Jetzt abfragen“ funktionieren weiter. Bleibt nach einem Neustart erhalten.</td><td>EIN</td></tr>
 <tr><td>12V-Mindestspannung</td><td>Unter diesem Wert wird nicht abgefragt, um die 12-V-Batterie zu schonen.</td><td>12,2 V</td></tr>
 <tr><td>Auto schläft unter</td><td>Liegt die 12-V-Spannung darunter, ist das Auto aus und lädt nicht. Dann schickt die Bridge <b>keine Anfragen ans Auto</b> (die würden es jedes Mal aufwecken) und misst nur einmal pro Minute die Spannung am Dongle. Sobald das Auto selbst aufwacht (Fahren, Laden, Vorklimatisieren, 12-V-Nachladung), wird wieder normal abgefragt. Ein wacher IONIQ 5 liegt bei ca. 14,7 V, ein schlafender bei 12,4–12,8 V. Bei einer 12-V-Lithiumbatterie (Ruhespannung ~13,3 V) den Wert auf ca. 13,6 V erhöhen. 0 = immer abfragen.</td><td>13,2 V</td></tr>
+<tr><td>12V-Warnung unter</td><td>Fällt die 12-V-Spannung darunter, meldet Home Assistant „12V niedrig“ (und das Log eine Warnung). Gut für eine Benachrichtigung, bevor die Batterie leer ist. 0 = aus.</td><td>12,0 V</td></tr>
 <tr><td>Abfrage, während das Auto schläft</td><td>Trotz Schlaf alle N Minuten einmal abfragen (weckt das Auto kurz). 0 = nie. „Jetzt abfragen“ fragt immer ab.</td><td>0</td></tr>
 <tr><td>Neuer Verbindungsversuch nach</td><td>Wartezeit, wenn der Dongle nicht erreichbar ist (Auto weg).</td><td>60 s</td></tr>
 <tr><td>Pause wenn Auto nicht antwortet</td><td>Wartezeit, wenn das Auto schläft.</td><td>600 s</td></tr>
@@ -229,6 +230,15 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 
 <section id="fehler">
 <h2>11. Probleme lösen</h2>
+<div class="box"><b>Diagnose-Bericht für Beta-Tester</b><br>
+Kommen keine oder falsche Werte, hilft ein Diagnose-Bericht am meisten:
+<ol>
+<li>Auto in Bluetooth-Reichweite, am besten eingeschaltet oder beim Laden.</li>
+<li>Status-Seite → Bereich <b>Diagnose</b> → <b>Diagnose-Bericht erstellen</b> (dauert bis ca. 1 Minute, das Auto wird dafür geweckt).</li>
+<li><b>Kopieren</b> oder <b>Herunterladen</b> und z. B. im Forum posten.</li>
+</ol>
+Der Bericht enthält Firmware, Dongle, Profil, jede Init-Antwort (ein <code>?</code> bedeutet „vom Dongle abgelehnt“), jede Abfrage mit Rohantwort und Bytes sowie die berechneten Werte – aber keine WLAN-Namen, IP-Adressen oder Passwörter. Bitte trotzdem kurz drüberschauen, bevor du ihn veröffentlichst.<br>
+Für Probleme, die nur ab und zu auftreten: <b>Diagnose-Log</b> einschalten – 2 Stunden lang steht dann jede Anfrage mit Rohantwort im Log.</div>
 <details><summary>„NO DATA“ oder „CAN ERROR“</summary>
 <p>Das Auto schläft. Die Steuergeräte antworten nur, wenn das Auto eingeschaltet ist oder lädt. Das ist normal – der letzte Wert bleibt in Home Assistant erhalten. Zum Testen: Auto einschalten oder Ladekabel anstecken.</p></details>
 <details><summary>„Dongle nicht erreichbar“</summary>
@@ -443,6 +453,7 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <tr><td>Polling ON/OFF</td><td>Main switch on the status page (and in Home Assistant as switch “Polling”). When OFF the bridge no longer connects to the car – e.g. at the workshop or during long parking. Test, terminal and “Poll now” keep working. Survives a restart.</td><td>ON</td></tr>
 <tr><td>12V minimum voltage</td><td>Below this value no polling takes place, to protect the 12 V battery.</td><td>12.2 V</td></tr>
 <tr><td>Car asleep below</td><td>If the 12 V voltage is below this value, the car is off and not charging. The bridge then sends <b>no requests to the car</b> (each one would wake it up) and only measures the voltage at the dongle once a minute. As soon as the car wakes up by itself (driving, charging, preconditioning, 12 V top-up), normal polling resumes. An awake IONIQ 5 is at about 14.7 V, a sleeping one at 12.4–12.8 V. With a 12 V lithium battery (resting voltage ~13.3 V) raise the value to about 13.6 V. 0 = always poll.</td><td>13.2 V</td></tr>
+<tr><td>12V warning below</td><td>If the 12 V voltage drops below this value, Home Assistant reports “12V low” (and the log a warning). Good for a notification before the battery is flat. 0 = off.</td><td>12.0 V</td></tr>
 <tr><td>Poll while car is asleep</td><td>Poll once every N minutes even while asleep (briefly wakes the car). 0 = never. “Poll now” always polls.</td><td>0</td></tr>
 <tr><td>Reconnect attempt after</td><td>Waiting time if the dongle is not reachable (car away).</td><td>60 s</td></tr>
 <tr><td>Pause when car does not respond</td><td>Waiting time if the car is asleep.</td><td>600 s</td></tr>
@@ -533,6 +544,15 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 
 <section id="fehler">
 <h2>11. Troubleshooting</h2>
+<div class="box"><b>Diagnostic report for beta testers</b><br>
+If no values or wrong values arrive, a diagnostic report helps most:
+<ol>
+<li>Car within Bluetooth range, ideally switched on or charging.</li>
+<li>Status page → <b>Diagnostics</b> section → <b>Create diagnostic report</b> (takes up to about 1 minute, the car is woken up for it).</li>
+<li><b>Copy</b> or <b>Download</b> and post it e.g. in the forum.</li>
+</ol>
+The report contains firmware, dongle, profile, every init response (a <code>?</code> means “rejected by the dongle”), every query with raw response and bytes, and the calculated values – but no WiFi names, IP addresses or passwords. Please still have a quick look before publishing it.<br>
+For problems that only occur occasionally: switch on the <b>diagnostic log</b> – for 2 hours every request with its raw response is written to the log.</div>
 <details><summary>“NO DATA” or “CAN ERROR”</summary>
 <p>The car is asleep. The control units only respond when the car is switched on or charging. This is normal – Home Assistant keeps the last value. For testing: switch the car on or plug in the charging cable.</p></details>
 <details><summary>“Dongle not reachable”</summary>

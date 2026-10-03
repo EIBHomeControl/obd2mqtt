@@ -20,6 +20,7 @@ ESP32-Firmware, die sich per Bluetooth LE mit einem ELM327-kompatiblen OBD2-Dong
 - MQTT Auto-Discovery: Sensoren erscheinen automatisch als Gerät in Home Assistant
 - 12-V-Schutz (ATRV), Pause wenn das Auto nicht antwortet, BLE wird zwischen den Abfragen getrennt, damit der Dongle schlafen kann
 - Setup-Access-Point mit Captive Portal, mDNS (`http://obd2mqtt.local`), OTA-Update, optionaler Passwortschutz
+- **Diagnose-Bericht** (ein Klick, kopieren/herunterladen, ohne WLAN-/IP-/Passwortdaten) und 2-Stunden-Diagnose-Log – ideal für Beta-Tester
 
 ## Flashen
 
@@ -56,14 +57,14 @@ Spätere Updates: Web-UI → System → Firmware-Update mit `obd2mqtt-vX.Y.Z-esp
 | `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **berechnete** Reichweite |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS-SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | State of Health |
-| `charging` / `charging_dc` / `ac_plug` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` / `bit(B12,5)` | Laden aktiv / DC-Laden / AC-Stecker – **experimentell** (WiCAN; bei evDash war dieses Byte am eigenen Auto immer 0) |
-| `charging_bms` | 7E4 | 220106 | `bit(B27,0)` | Laden aktiv – **experimentell** (evDash) |
+| `charging` / `charging_dc` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` | Laden aktiv / DC-Laden – **experimentell** (WiCAN; bei evDash war dieses Byte am eigenen Auto immer 0). Eine Abfrage für „Stecker drin“ ist nicht bekannt – das AC-Stecker-Bit bleibt auch mit Kabel 0 |
 
 Quellen: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
 
 ### XPeng G9 (auch G6/P5/P7/X9)
 
-Batteriemanagement über Header `704`, Antwort von `784` (`ATCRA784`, `ATFCSH704`, `ATFCSM1` in den Init-Befehlen).
+Batteriemanagement über Header `704`, Antwort von `784`. Init: `ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATAT1 ATAL ATCRA784 ATFCSH704 ATFCSD300000 ATFCSM1`.
+**Wichtig:** `ATFCSM1` (eigene Flow-Control) funktioniert nur, wenn vorher `ATFCSH` **und** `ATFCSD` gesetzt sind. Im WiCAN-Profil (und bei uns bis 0.3.10) fehlt `ATFCSD300000` – der ELM327 lehnt `ATFCSM1` dann ab, schickt die Flow-Control an die falsche Adresse (`77C` statt `704`) und mehrteilige Antworten kommen nie vollständig an. Ab 0.3.11 werden gespeicherte Profile automatisch repariert.
 Die Grundlage ist das WiCAN-Profil `xpeng_g6.json`. Korrigiert habe ich es nach [XPCarData](https://github.com/stevelea/xpcardata); dort sind die Werte am G6 geprüft:
 
 - **SoH** liegt auf `22110A`. Bei WiCAN steht `22011A`, das ist vermutlich ein Tippfehler.
@@ -122,6 +123,7 @@ WiCAN zählt die Bytes der rohen CAN-Frames inklusive der ISO-TP-Steuerbytes, hi
 | `obd2mqtt/voltage_12v` | 12-V-Spannung am Dongle |
 | `obd2mqtt/car` | `online` / `offline` – Dongle erreichbar |
 | `obd2mqtt/polling` | `ON` / `OFF` – Hauptschalter der automatischen Abfrage; schalten über `obd2mqtt/polling/set` (in HA: Schalter „Abfrage“) |
+| `obd2mqtt/battery_low` | `ON` / `OFF` – 12-V-Batterie unter der Warnschwelle (Standard 12,0 V) |
 | `obd2mqtt/car_awake` | `ON` / `OFF` – Auto wach (12 V über der Schlafschwelle, d. h. DC/DC-Wandler aktiv) |
 | `obd2mqtt/ble_rssi` | BLE-Signalstärke |
 | `obd2mqtt/last_error` | letzter Fehler |
