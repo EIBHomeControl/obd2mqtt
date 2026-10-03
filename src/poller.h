@@ -23,7 +23,8 @@ bool isPaused();
 enum JobType { JOB_RAW, JOB_TEST, JOB_SCAN, JOB_DIAG };
 void setDebug(uint32_t minutes);
 size_t diagChunk(size_t offset, uint8_t* buf, size_t maxLen);   // letzter Diagnose-Bericht (Text)              // Diagnose-Log für N Minuten (0 = aus)
-bool submitJob(JobType t, const String& header, const String& cmd, const String& formula);
+bool submitJob(JobType t, const String& header, const String& cmd, const String& formula,
+               float cap = 0, float cons = 0);   // cap/cons: Akku-Werte für den Test (0 = aktives Profil)
 void jobJson(JsonDocument& d);                // {state: idle|pending|running|done, result: {...}}
 
 void statusJson(JsonDocument& d);

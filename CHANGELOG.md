@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.15
+- Neu: Profil → „Akku & Reichweite“ – Akku-Variante aus Liste wählen (bekannte Größen vorbelegt: IONIQ 5 58–84 kWh, G9, G6, P7+), Kapazität von Hand korrigierbar, Verbrauch in kWh/100 km, Anzeige der rechnerischen Vollreichweite
+- Formeln können die Variablen CAP (nutzbare kWh) und CONS (kWh/100 km) verwenden; die Reichweiten-Formeln der Werksprofile nutzen sie („Test“ rechnet mit den Werten aus dem Formular)
+- Gespeicherte Profile werden umgestellt: alte Reichweiten-Formel „…/100*kWh/Verbrauch“ → CAP/CONS mit übernommenen Werten, Akku-Auswahlliste ergänzt
+- IONIQ-5-Werksprofil: ATAT0 (keine adaptive Wartezeit) und feste Flow-Control (ATFCSH7E4, ATFCSD300000, ATFCSM1) – lange Antworten wie 220101 kamen mit einem „OBDII v1.5“-Nachbau vorher fast nie vollständig, im Test jetzt 6 von 7; unveränderte IONIQ-Profile werden automatisch umgestellt
+- Mit eigener Flow-Control (ATFCSM1) wandert die Flow-Control-Adresse bei jedem Adresswechsel automatisch mit (z. B. 7E4 → 7C6 für den Kilometerstand)
+- MQTT: Akku-Kapazität und Verbrauch in den Profil-Attributen
+
 ## 0.3.14
 - Fix: Im Schlafmodus stand trotzdem jede Minute „BLE getrennt (Grund 0x216)“ im Log – füllte das Log in ca. 4 Stunden und verdrängte ältere Einträge
 

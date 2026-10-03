@@ -62,12 +62,14 @@ All values of the factory profiles are enabled by default; you can switch indivi
 
 ### Hyundai IONIQ 5 (also Kia EV6 / IONIQ 6, E-GMP)
 
+Init: `ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATAT0 ATSTFF ATFCSH7E4 ATFCSD300000 ATFCSM1`. `ATAT0` (no adaptive timing) and the explicit flow control make long responses (`220101`, 62 bytes) reliable on cheap ELM327 clones – in a test with an "OBDII v1.5" dongle it went from 0 of 3 to 6 of 7 complete responses. The flow-control address follows each header change automatically (`7E4`, `7C6`).
+
 | ID | Header | Command | Formula | Meaning |
 |---|---|---|---|---|
 | `soc` | 7E4 | 220105 | `B34/2` | displayed SoC |
 | `bat_temp_max` / `bat_temp_min` | 7E4 | 220101 | `s8(B17)` / `s8(B18)` | battery temperature °C |
 | `odometer` | 7C6 | 22B002 | `B9*65536+B10*256+B11` | odometer (instrument cluster, usually only with ignition on) |
-| `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **calculated** range |
+| `range_calc` | 7E4 | 220105 | `B34/2*CAP/CONS` | **calculated** range |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | state of health |
 | `charging` / `charging_dc` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` | charging active / DC charging – **experimental** (WiCAN; evDash reported this byte as always 0 on its car). No plug-detection PID known – the AC plug bit stays 0 with the cable plugged in |
@@ -90,7 +92,7 @@ The basis is the WiCAN profile `xpeng_g6.json`, corrected according to [XPCarDat
 | `bat_temp_max` / `bat_temp_min` | 221107 / 221108 | `B3-40` | battery temperature °C |
 | `odometer` | 220101 | `B3*65536+B4*256+B5` | odometer |
 | `range_cltc` | 221118 | `u16(B3,B4)` | range (CLTC) |
-| `range_calc` | 221109 | `u16(B3,B4)/10/100*93/0.20` | calculated range |
+| `range_calc` | 221109 | `u16(B3,B4)/10*CAP/CONS` | calculated range |
 | `soh` | 22110A | `u16(B3,B4)/10` | state of health |
 | `charge_limit` | 221130 | `u16(B3,B4)-10` | charge limit % |
 | `charge_status` | 22112D | `B3` (0 = no, 2/4 = DC, 3 = AC) | charging status |
@@ -104,7 +106,7 @@ Separate profiles `g6` and `p7plus` with the same values as the G9. For the G6 t
 
 ### Range
 
-None of these cars report the dashboard range via OBD – neither evDash nor WiCAN nor OVMS read it. `range_calc` therefore estimates it: SoC × usable capacity (kWh) ÷ consumption (kWh/km). Put your own values into the formula, e.g. `…*63/0.17` for an IONIQ 5 with 63 kWh. Alternatively, calculate it as a template sensor in Home Assistant.
+None of these cars report the dashboard range via OBD – neither evDash nor WiCAN nor OVMS read it. `range_calc` therefore estimates it: SoC × usable capacity ÷ consumption. Under **Profile → Battery & range** you pick your battery variant from a list (known sizes pre-filled, value can be corrected by hand) and enter your average consumption in kWh/100 km. Formulas can use the variables `CAP` (usable kWh) and `CONS` (kWh/100 km). Pre-filled variants (usable capacity): IONIQ 5 58/63/72.6/77.4/84 kWh (≈54/60/70/74/80), G9 MY25 78.2/92.2 kWh, G9 2023/24 98 kWh (≈93), G6 MY25 67.8/80.0 kWh, G6 2024 66/87.5 kWh (≈64/84), P7+ 59.6/74.9 kWh (MY25/26 values from ev-database.org).
 
 ### Converting WiCAN profiles
 

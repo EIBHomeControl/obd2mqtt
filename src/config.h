@@ -56,8 +56,12 @@ struct PidDef {
   bool enabled = true;
 };
 
+struct BatteryOption { String name; float kwh; };
 struct Profile {
   String name, model;
+  float batteryKwh = 0;                 // nutzbare Kapazität (kWh) → Formel-Variable CAP
+  float consumption = 0;                // Verbrauch (kWh/100 km) → Formel-Variable CONS
+  std::vector<BatteryOption> batteryOptions;   // Auswahlliste in der Oberfläche
   std::vector<String> init;
   std::vector<PidDef> pids;
 };

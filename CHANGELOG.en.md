@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.15
+- New: Profile → “Battery & range” – pick the battery variant from a list (known sizes pre-filled: IONIQ 5 58–84 kWh, G9, G6, P7+), capacity can be corrected by hand, consumption in kWh/100 km, calculated full range shown
+- Formulas can use the variables CAP (usable kWh) and CONS (kWh/100 km); the range formulas of the factory profiles use them (“Test” uses the values from the form)
+- Stored profiles are converted: old range formula “…/100*kWh/consumption” → CAP/CONS with the values taken over, battery selection list added
+- IONIQ 5 factory profile: ATAT0 (no adaptive timing) and explicit flow control (ATFCSH7E4, ATFCSD300000, ATFCSM1) – long responses like 220101 almost never arrived complete with an “OBDII v1.5” clone, now 6 of 7 in a test; unmodified IONIQ profiles are converted automatically
+- With user-defined flow control (ATFCSM1) the flow-control address follows every header change automatically (e.g. 7E4 → 7C6 for the odometer)
+- MQTT: battery capacity and consumption in the profile attributes
+
 ## 0.3.14
 - Fix: in sleep mode “BLE disconnected (reason 0x216)” was still logged every minute – filled the log in about 4 hours and pushed out older entries
 

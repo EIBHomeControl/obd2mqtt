@@ -137,6 +137,7 @@ void setup() {
   if (!fsOk) logf("LittleFS error!");
   Watchdog::begin();
   logBootCheck(Watchdog::crashCount());
+  migrateProfiles();   // nach loadConfig, damit die Sprache für Auswahllisten stimmt
   if (!cfgOk) logf("%s", T("Keine Konfiguration – Standardwerte", "No configuration – using defaults"));
   logSetPersist(cfg.logPersist);
   configTzTime(cfg.tz.c_str(), cfg.ntpServer.c_str(), "time.cloudflare.com");

@@ -1,5 +1,24 @@
 [
  {
+  "v": "0.3.15",
+  "de": [
+   "Neu: Profil → „Akku & Reichweite“ – Akku-Variante aus Liste wählen (bekannte Größen vorbelegt: IONIQ 5 58–84 kWh, G9, G6, P7+), Kapazität von Hand korrigierbar, Verbrauch in kWh/100 km, Anzeige der rechnerischen Vollreichweite",
+   "Formeln können die Variablen CAP (nutzbare kWh) und CONS (kWh/100 km) verwenden; die Reichweiten-Formeln der Werksprofile nutzen sie („Test“ rechnet mit den Werten aus dem Formular)",
+   "Gespeicherte Profile werden umgestellt: alte Reichweiten-Formel „…/100*kWh/Verbrauch“ → CAP/CONS mit übernommenen Werten, Akku-Auswahlliste ergänzt",
+   "IONIQ-5-Werksprofil: ATAT0 (keine adaptive Wartezeit) und feste Flow-Control (ATFCSH7E4, ATFCSD300000, ATFCSM1) – lange Antworten wie 220101 kamen mit einem „OBDII v1.5“-Nachbau vorher fast nie vollständig, im Test jetzt 6 von 7; unveränderte IONIQ-Profile werden automatisch umgestellt",
+   "Mit eigener Flow-Control (ATFCSM1) wandert die Flow-Control-Adresse bei jedem Adresswechsel automatisch mit (z. B. 7E4 → 7C6 für den Kilometerstand)",
+   "MQTT: Akku-Kapazität und Verbrauch in den Profil-Attributen"
+  ],
+  "en": [
+   "New: Profile → “Battery & range” – pick the battery variant from a list (known sizes pre-filled: IONIQ 5 58–84 kWh, G9, G6, P7+), capacity can be corrected by hand, consumption in kWh/100 km, calculated full range shown",
+   "Formulas can use the variables CAP (usable kWh) and CONS (kWh/100 km); the range formulas of the factory profiles use them (“Test” uses the values from the form)",
+   "Stored profiles are converted: old range formula “…/100*kWh/consumption” → CAP/CONS with the values taken over, battery selection list added",
+   "IONIQ 5 factory profile: ATAT0 (no adaptive timing) and explicit flow control (ATFCSH7E4, ATFCSD300000, ATFCSM1) – long responses like 220101 almost never arrived complete with an “OBDII v1.5” clone, now 6 of 7 in a test; unmodified IONIQ profiles are converted automatically",
+   "With user-defined flow control (ATFCSM1) the flow-control address follows every header change automatically (e.g. 7E4 → 7C6 for the odometer)",
+   "MQTT: battery capacity and consumption in the profile attributes"
+  ]
+ },
+ {
   "v": "0.3.14",
   "de": [
    "Fix: Im Schlafmodus stand trotzdem jede Minute „BLE getrennt (Grund 0x216)“ im Log – füllte das Log in ca. 4 Stunden und verdrängte ältere Einträge"

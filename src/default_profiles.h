@@ -16,7 +16,15 @@
 static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
   "name": "Hyundai IONIQ 5 / Kia EV6", "name_en": "Hyundai IONIQ 5 / Kia EV6",
   "model": "Hyundai IONIQ 5 (E-GMP)",
-  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATSTFF"],
+  "battery_kwh": 74, "consumption": 19,
+  "battery_options": [
+    { "name": "58 kWh (nutzbar ca. 54 kWh)", "name_en": "58 kWh (usable approx. 54 kWh)", "kwh": 54 },
+    { "name": "63 kWh, ab 2024 (nutzbar ca. 60 kWh)", "name_en": "63 kWh, from 2024 (usable approx. 60 kWh)", "kwh": 60 },
+    { "name": "72,6 kWh (nutzbar ca. 70 kWh)", "name_en": "72.6 kWh (usable approx. 70 kWh)", "kwh": 70 },
+    { "name": "77,4 kWh (nutzbar ca. 74 kWh)", "name_en": "77.4 kWh (usable approx. 74 kWh)", "kwh": 74 },
+    { "name": "84 kWh, ab 2024 (nutzbar ca. 80 kWh)", "name_en": "84 kWh, from 2024 (usable approx. 80 kWh)", "kwh": 80 }
+  ],
+  "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT0", "ATSTFF", "ATFCSH7E4", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "7E4", "cmd": "220105",
       "formula": "B34/2", "unit": "%", "device_class": "battery",
@@ -32,7 +40,7 @@ static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
       "state_class": "total_increasing", "icon": "mdi:counter",
       "interval": 1800, "min": 1, "max": 2000000, "precision": 0, "enabled": true },
     { "id": "range_calc", "name": "Reichweite (berechnet)", "name_en": "Range (calculated)", "header": "7E4", "cmd": "220105",
-      "formula": "B34/2/100*74/0.19", "unit": "km", "device_class": "distance",
+      "formula": "B34/2*CAP/CONS", "unit": "km", "device_class": "distance",
       "icon": "mdi:map-marker-distance",
       "interval": 120, "min": 0, "max": 800, "precision": 0, "enabled": true },
     { "id": "soc_bms", "name": "SoC (BMS roh)", "name_en": "SoC (BMS raw)", "header": "7E4", "cmd": "220101",
@@ -57,6 +65,12 @@ static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
 static const char PROFILE_G9[] PROGMEM = R"JSON({
   "name": "XPeng G9",
   "model": "XPeng G9",
+  "battery_kwh": 92.2, "consumption": 20,
+  "battery_options": [
+    { "name": "78,2 kWh – Standard Range (MY25)", "name_en": "78.2 kWh – Standard Range (MY25)", "kwh": 78.2 },
+    { "name": "92,2 kWh – Long Range / Performance (MY25)", "name_en": "92.2 kWh – Long Range / Performance (MY25)", "kwh": 92.2 },
+    { "name": "98 kWh – 2023/2024 (nutzbar ca. 93 kWh)", "name_en": "98 kWh – 2023/2024 (usable approx. 93 kWh)", "kwh": 93 }
+  ],
   "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATAL", "ATCRA784", "ATFCSH704", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "704", "cmd": "221109",
@@ -77,7 +91,7 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
       "icon": "mdi:map-marker-distance",
       "interval": 300, "min": 0, "max": 1000, "precision": 0, "enabled": true },
     { "id": "range_calc", "name": "Reichweite (berechnet)", "name_en": "Range (calculated)", "header": "704", "cmd": "221109",
-      "formula": "u16(B3,B4)/10/100*93/0.20", "unit": "km", "device_class": "distance",
+      "formula": "u16(B3,B4)/10*CAP/CONS", "unit": "km", "device_class": "distance",
       "icon": "mdi:map-marker-distance",
       "interval": 120, "min": 0, "max": 800, "precision": 0, "enabled": true },
     { "id": "soh", "name": "SoH", "header": "704", "cmd": "22110A",
@@ -102,6 +116,13 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
 static const char PROFILE_G6[] PROGMEM = R"JSON({
   "name": "XPeng G6",
   "model": "XPeng G6",
+  "battery_kwh": 80, "consumption": 19,
+  "battery_options": [
+    { "name": "68,5 kWh – Standard Range (MY25)", "name_en": "68.5 kWh – Standard Range (MY25)", "kwh": 67.8 },
+    { "name": "80,8 kWh – Long Range / AWD (MY25)", "name_en": "80.8 kWh – Long Range / AWD (MY25)", "kwh": 80 },
+    { "name": "66 kWh – 2024 (nutzbar ca. 64 kWh)", "name_en": "66 kWh – 2024 (usable approx. 64 kWh)", "kwh": 64 },
+    { "name": "87,5 kWh – 2024 (nutzbar ca. 84 kWh)", "name_en": "87.5 kWh – 2024 (usable approx. 84 kWh)", "kwh": 84 }
+  ],
   "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATAL", "ATCRA784", "ATFCSH704", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "704", "cmd": "221109",
@@ -122,7 +143,7 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
       "icon": "mdi:map-marker-distance",
       "interval": 300, "min": 0, "max": 1000, "precision": 0, "enabled": true },
     { "id": "range_calc", "name": "Reichweite (berechnet)", "name_en": "Range (calculated)", "header": "704", "cmd": "221109",
-      "formula": "u16(B3,B4)/10/100*80/0.19", "unit": "km", "device_class": "distance",
+      "formula": "u16(B3,B4)/10*CAP/CONS", "unit": "km", "device_class": "distance",
       "icon": "mdi:map-marker-distance",
       "interval": 120, "min": 0, "max": 800, "precision": 0, "enabled": true },
     { "id": "soh", "name": "SoH", "header": "704", "cmd": "22110A",
@@ -148,6 +169,11 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
 static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
   "name": "XPeng P7+ (experimentell)", "name_en": "XPeng P7+ (experimental)",
   "model": "XPeng P7+",
+  "battery_kwh": 74.9, "consumption": 16,
+  "battery_options": [
+    { "name": "61,7 kWh – Standard Range (nutzbar 59,6 kWh)", "name_en": "61.7 kWh – Standard Range (usable 59.6 kWh)", "kwh": 59.6 },
+    { "name": "74,9 kWh – Long Range / Performance", "name_en": "74.9 kWh – Long Range / Performance", "kwh": 74.9 }
+  ],
   "init": ["ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP6", "ATAT1", "ATAL", "ATCRA784", "ATFCSH704", "ATFCSD300000", "ATFCSM1"],
   "pids": [
     { "id": "soc", "name": "SoC", "header": "704", "cmd": "221109",
@@ -168,7 +194,7 @@ static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
       "icon": "mdi:map-marker-distance",
       "interval": 300, "min": 0, "max": 1000, "precision": 0, "enabled": true },
     { "id": "range_calc", "name": "Reichweite (berechnet)", "name_en": "Range (calculated)", "header": "704", "cmd": "221109",
-      "formula": "u16(B3,B4)/10/100*74/0.16", "unit": "km", "device_class": "distance",
+      "formula": "u16(B3,B4)/10*CAP/CONS", "unit": "km", "device_class": "distance",
       "icon": "mdi:map-marker-distance",
       "interval": 120, "min": 0, "max": 800, "precision": 0, "enabled": true },
     { "id": "soh", "name": "SoH", "header": "704", "cmd": "22110A",

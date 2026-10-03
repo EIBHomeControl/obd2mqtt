@@ -56,6 +56,8 @@ void publishProfile() {
   a["id"] = cfg.profile;
   a["name"] = profile.name;
   a["model"] = profile.model;
+  if (profile.batteryKwh > 0) a["battery_kwh"] = profile.batteryKwh;
+  if (profile.consumption > 0) a["consumption_kwh_100km"] = profile.consumption;
   JsonArray en = a["active_pids"].to<JsonArray>();
   for (auto& p : profile.pids) if (p.enabled) en.add(p.id);
   a["firmware"] = FW_VERSION;

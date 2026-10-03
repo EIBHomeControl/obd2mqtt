@@ -19,6 +19,9 @@ bool parseResponse(const std::string& raw, const std::string& cmd,
                    std::vector<uint8_t>& bytes, std::string& err);
 
 // Formel mit Variablen B0..Bn und Funktionen u16(hi,lo), s16(hi,lo), s8(x), bit(x,n)
+// Akku-Werte des aktiven Profils für Formeln: CAP = nutzbare Kapazität (kWh), CONS = Verbrauch (kWh/100 km)
+void setBattery(double capKwh, double consKwh100);
+void getBattery(double& capKwh, double& consKwh100);
 bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
                  double& value, std::string& err);
 

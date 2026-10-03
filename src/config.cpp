@@ -3,6 +3,7 @@
 #include "default_profiles.h"
 #include "i18n.h"
 #include "log.h"
+#include "obd_parse.h"
 
 AppConfig cfg;
 Profile profile;
@@ -14,7 +15,6 @@ bool fsBegin() {
   if (!LittleFS.begin(true)) return false;   // formatiert bei Bedarf
   if (!LittleFS.exists("/profiles")) LittleFS.mkdir("/profiles");
   installDefaultProfiles(false);
-  migrateProfiles();
   return true;
 }
 
@@ -55,10 +55,55 @@ void migrateProfiles() {
         if (h == "7DF" && (o["enabled"] | true)) { o["enabled"] = false; changed = true; }
       }
     }
+    // Reichweite: alte Formel "…/100*<kWh>/<kWh pro km>" → "…*CAP/CONS" + Akku-Werte im Profil
+    for (JsonObject o : d["pids"].as<JsonArray>()) {
+      String f = o["formula"] | "";
+      int k = f.indexOf("/100*");
+      if (k < 0) continue;
+      String rest = f.substring(k + 5);
+      int sl = rest.indexOf('/');
+      if (sl <= 0) continue;
+      float cap = rest.substring(0, sl).toFloat(), cons = rest.substring(sl + 1).toFloat();
+      bool numeric = true;
+      for (char ch : rest) if (!(isdigit((unsigned char)ch) || ch == '.' || ch == '/')) numeric = false;
+      if (!numeric || cap <= 0 || cons <= 0 || cons >= 1) continue;
+      o["formula"] = f.substring(0, k) + "*CAP/CONS";
+      if (!(d["battery_kwh"] | 0.0f)) d["battery_kwh"] = cap;
+      if (!(d["consumption"] | 0.0f)) d["consumption"] = round(cons * 1000) / 10.0;
+      changed = true;
+    }
+    // Werksprofil-Ableger: Akku-Auswahlliste und (falls unverändert) neue Init-Befehle übernehmen
+    for (auto& dp : DEFAULT_PROFILES) {
+      if (name != dp.file) continue;
+      JsonDocument fac;
+      if (deserializeJson(fac, FPSTR(dp.json))) break;
+      if (d["battery_options"].isNull() && !fac["battery_options"].isNull()) {
+        JsonArray bo = d["battery_options"].to<JsonArray>();
+        for (JsonObject o : fac["battery_options"].as<JsonArray>()) {
+          JsonObject n = bo.add<JsonObject>();
+          n["name"] = (g_lang == 1 && o["name_en"].is<const char*>()) ? o["name_en"] : o["name"];
+          n["kwh"] = o["kwh"];
+        }
+        if (!(d["battery_kwh"] | 0.0f)) d["battery_kwh"] = fac["battery_kwh"];
+        if (!(d["consumption"] | 0.0f)) d["consumption"] = fac["consumption"];
+        changed = true;
+      }
+      // IONIQ 5: alte Werks-Init (ATST96/ATSTFF ohne ATAT0) → neue mit ATAT0 + fester Flow-Control
+      if (String(dp.file) == "ioniq5") {
+        String cur;
+        for (JsonVariant v : d["init"].as<JsonArray>()) { cur += v.as<String>(); cur += ' '; }
+        cur.trim();
+        if (cur == "ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATST96" || cur == "ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATSTFF") {
+          d["init"] = fac["init"];
+          changed = true;
+        }
+      }
+      break;
+    }
     if (changed) {
       File f = LittleFS.open(String("/profiles/") + name + ".json", "w");
       if (f) { serializeJsonPretty(d, f); f.close(); }
-      logf(T("Profil '%s' repariert (Flow-Control ATFCSD ergänzt bzw. 7DF-Abfrage abgeschaltet)", "Profile '%s' repaired (flow control ATFCSD added or 7DF query disabled)"), name.c_str());
+      logf(T("Profil '%s' aktualisiert (Init-Befehle / Akku-Werte / Reichweiten-Formel)", "Profile '%s' updated (init commands / battery values / range formula)"), name.c_str());
     }
   }
 }
@@ -80,6 +125,10 @@ void installDefaultProfiles(bool overwrite) {
     if (g_lang == 1 && doc["name_en"].is<const char*>()) doc["name"] = doc["name_en"];
     doc.remove("name_en");
     for (JsonObject o : doc["pids"].as<JsonArray>()) {
+      if (g_lang == 1 && o["name_en"].is<const char*>()) o["name"] = o["name_en"];
+      o.remove("name_en");
+    }
+    for (JsonObject o : doc["battery_options"].as<JsonArray>()) {
       if (g_lang == 1 && o["name_en"].is<const char*>()) o["name"] = o["name_en"];
       o.remove("name_en");
     }
@@ -220,6 +269,12 @@ bool parseProfile(JsonVariantConst s, Profile& p, String& err) {
   p = Profile();
   p.name = s["name"] | "";
   p.model = s["model"] | "";
+  p.batteryKwh = s["battery_kwh"] | 0.0f;
+  p.consumption = s["consumption"] | 0.0f;
+  for (JsonVariantConst o : s["battery_options"].as<JsonArrayConst>()) {
+    BatteryOption b{o["name"] | "", o["kwh"] | 0.0f};
+    if (b.name.length() && b.kwh > 0) p.batteryOptions.push_back(b);
+  }
   for (JsonVariantConst c : s["init"].as<JsonArrayConst>()) p.init.push_back(c.as<String>());
   if (p.init.empty()) p.init = {"ATZ", "ATE0", "ATL0", "ATS0", "ATH0", "ATSP0"};
   for (JsonVariantConst j : s["pids"].as<JsonArrayConst>()) {
@@ -253,6 +308,12 @@ bool parseProfile(JsonVariantConst s, Profile& p, String& err) {
 void profileToJson(const Profile& p, JsonDocument& d) {
   d["name"] = p.name;
   d["model"] = p.model;
+  if (p.batteryKwh > 0) d["battery_kwh"] = p.batteryKwh;
+  if (p.consumption > 0) d["consumption"] = p.consumption;
+  if (!p.batteryOptions.empty()) {
+    JsonArray bo = d["battery_options"].to<JsonArray>();
+    for (auto& b : p.batteryOptions) { JsonObject o = bo.add<JsonObject>(); o["name"] = b.name; o["kwh"] = b.kwh; }
+  }
   JsonArray in = d["init"].to<JsonArray>();
   for (auto& c : p.init) in.add(c);
   JsonArray arr = d["pids"].to<JsonArray>();
@@ -282,7 +343,9 @@ bool loadProfile(const String& name) {
   JsonDocument d;
   if (deserializeJson(d, raw)) return false;
   String err;
-  return parseProfile(d.as<JsonVariantConst>(), profile, err);
+  if (!parseProfile(d.as<JsonVariantConst>(), profile, err)) return false;
+  ObdParse::setBattery(profile.batteryKwh, profile.consumption);
+  return true;
 }
 
 bool saveProfileRaw(const String& name, const String& json, String& err) {

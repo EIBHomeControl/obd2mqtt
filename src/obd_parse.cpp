@@ -118,13 +118,20 @@ static double fnS16(double hi, double lo) { return (double)(int16_t)(((unsigned)
 static double fnS8(double x) { return (double)(int8_t)((unsigned)x & 0xFF); }
 static double fnBit(double x, double n) { return (double)((((unsigned long)x) >> (unsigned)n) & 1UL); }
 
+static double gCap = 0, gCons = 0;
+void setBattery(double capKwh, double consKwh100) { gCap = capKwh; gCons = consKwh100; }
+void getBattery(double& capKwh, double& consKwh100) { capKwh = gCap; consKwh100 = gCons; }
+
 bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
                  double& value, std::string& err) {
   const size_t n = bytes.size() > 250 ? 250 : bytes.size();
   std::vector<std::string> names(n);
   std::vector<double> vals(n);
   std::vector<te_variable> vars;
-  vars.reserve(n + 4);
+  vars.reserve(n + 6);
+  double cap = gCap, cons = gCons;
+  vars.push_back({"CAP", &cap, TE_VARIABLE, nullptr});
+  vars.push_back({"CONS", &cons, TE_VARIABLE, nullptr});
   vars.push_back({"u16", (const void*)fnU16, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
   vars.push_back({"s16", (const void*)fnS16, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
   vars.push_back({"s8", (const void*)fnS8, TE_FUNCTION1 | TE_FLAG_PURE, nullptr});

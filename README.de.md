@@ -49,12 +49,14 @@ Spätere Updates: Web-UI → System → Firmware-Update mit `obd2mqtt-vX.Y.Z-esp
 
 ### Hyundai IONIQ 5 (auch Kia EV6 / IONIQ 6, E-GMP)
 
+Init: `ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATAT0 ATSTFF ATFCSH7E4 ATFCSD300000 ATFCSM1`. `ATAT0` (keine adaptive Wartezeit) und die feste Flow-Control machen lange Antworten (`220101`, 62 Bytes) mit billigen ELM327-Nachbauten zuverlässig – im Test mit einem „OBDII v1.5“-Dongle von 0 aus 3 auf 6 aus 7 vollständige Antworten. Die Flow-Control-Adresse wandert bei jedem Adresswechsel automatisch mit (`7E4`, `7C6`).
+
 | ID | Header | Befehl | Formel | Bedeutung |
 |---|---|---|---|---|
 | `soc` | 7E4 | 220105 | `B34/2` | Anzeige-SoC |
 | `bat_temp_max` / `bat_temp_min` | 7E4 | 220101 | `s8(B17)` / `s8(B18)` | Batterietemperatur °C |
 | `odometer` | 7C6 | 22B002 | `B9*65536+B10*256+B11` | Kilometerstand (Kombiinstrument, meist nur bei Zündung an) |
-| `range_calc` | 7E4 | 220105 | `B34/2/100*74/0.19` | **berechnete** Reichweite |
+| `range_calc` | 7E4 | 220105 | `B34/2*CAP/CONS` | **berechnete** Reichweite |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS-SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | State of Health |
 | `charging` / `charging_dc` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` | Laden aktiv / DC-Laden – **experimentell** (WiCAN; bei evDash war dieses Byte am eigenen Auto immer 0). Eine Abfrage für „Stecker drin“ ist nicht bekannt – das AC-Stecker-Bit bleibt auch mit Kabel 0 |
@@ -77,7 +79,7 @@ Die Grundlage ist das WiCAN-Profil `xpeng_g6.json`. Korrigiert habe ich es nach 
 | `bat_temp_max` / `bat_temp_min` | 221107 / 221108 | `B3-40` | Batterietemperatur °C |
 | `odometer` | 220101 | `B3*65536+B4*256+B5` | Kilometerstand |
 | `range_cltc` | 221118 | `u16(B3,B4)` | Reichweite CLTC |
-| `range_calc` | 221109 | `u16(B3,B4)/10/100*93/0.20` | berechnete Reichweite |
+| `range_calc` | 221109 | `u16(B3,B4)/10*CAP/CONS` | berechnete Reichweite |
 | `soh` | 22110A | `u16(B3,B4)/10` | State of Health |
 | `charge_limit` | 221130 | `u16(B3,B4)-10` | Ladelimit % |
 | `charge_status` | 22112D | `B3` (0 = nein, 2/4 = DC, 3 = AC) | Ladestatus |
@@ -91,7 +93,7 @@ Eigene Profile `g6` und `p7plus` mit denselben Werten wie beim G9. Für den G6 s
 
 ### Reichweite
 
-Keines der Autos liefert die Reichweite aus dem Cockpit per OBD, weder evDash noch WiCAN noch OVMS lesen sie aus. `range_calc` schätzt sie deshalb: SoC × nutzbare Kapazität (kWh) ÷ Verbrauch (kWh/km). Trage in der Formel deine Werte ein, z. B. `…*63/0.17` für einen IONIQ 5 mit 63 kWh. Alternativ lässt sich das auch als Template-Sensor in Home Assistant rechnen.
+Keines der Autos liefert die Reichweite aus dem Cockpit per OBD, weder evDash noch WiCAN noch OVMS lesen sie aus. `range_calc` schätzt sie deshalb: SoC × nutzbare Kapazität ÷ Verbrauch. Unter **Profil → Akku & Reichweite** wählst du deine Akku-Variante aus einer Liste (bekannte Größen vorbelegt, Wert von Hand korrigierbar) und trägst deinen Durchschnittsverbrauch in kWh/100 km ein. Formeln können die Variablen `CAP` (nutzbare kWh) und `CONS` (kWh/100 km) verwenden. Vorbelegte Varianten (nutzbare Kapazität): IONIQ 5 58/63/72,6/77,4/84 kWh (≈54/60/70/74/80), G9 MY25 78,2/92,2 kWh, G9 2023/24 98 kWh (≈93), G6 MY25 67,8/80,0 kWh, G6 2024 66/87,5 kWh (≈64/84), P7+ 59,6/74,9 kWh (MY25/26-Werte von ev-database.org).
 
 ### Profile aus WiCAN übernehmen
 

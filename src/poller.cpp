@@ -48,6 +48,7 @@ static String pendingConfig;          // unter mtx
 struct Job {
   JobType type;
   String header, cmd, formula;
+  float cap = 0, cons = 0;
   String state = "idle";
   String resultJson;
   String progress;
@@ -148,10 +149,26 @@ static bool ensureReady(String& err) {
   return true;
 }
 
+// Eigene Flow-Control (ATFCSM1) im Profil? Dann muss die Flow-Control-Adresse bei jedem
+// Adresswechsel mitwandern (z. B. IONIQ: 7E4 für das BMS, 7C6 für den Kilometerstand).
+static bool userFlowControl() {
+  for (auto& c : profile.init) {
+    String u = c;
+    u.toUpperCase();
+    u.replace(" ", "");
+    if (u == "ATFCSM1") return true;
+  }
+  return false;
+}
+
 static bool setHeader(const String& h) {
   if (h.isEmpty() || h == currentHeader) return true;
   String r;
   if (!elmCmd("ATSH" + h, r) || r.indexOf("OK") < 0) {
+    currentHeader = "";
+    return false;
+  }
+  if (userFlowControl() && (!elmCmd("ATFCSH" + h, r) || r.indexOf("OK") < 0)) {
     currentHeader = "";
     return false;
   }
@@ -570,9 +587,13 @@ static void runJob() {
         r["bytes"] = ObdParse::toHex(bytes).c_str();
         r["count"] = bytes.size();
         if (j.formula.length()) {
-          double v;
+          double v, c0, k0;
           std::string e;
-          if (ObdParse::evalFormula(j.formula.c_str(), bytes, v, e)) r["value"] = v;
+          ObdParse::getBattery(c0, k0);
+          if (j.cap > 0 || j.cons > 0) ObdParse::setBattery(j.cap > 0 ? j.cap : c0, j.cons > 0 ? j.cons : k0);
+          bool fo = ObdParse::evalFormula(j.formula.c_str(), bytes, v, e);
+          ObdParse::setBattery(c0, k0);
+          if (fo) r["value"] = v;
           else { ok = false; err = e.c_str(); }
         }
       }
@@ -588,7 +609,7 @@ static void runJob() {
   job.state = "done";
 }
 
-bool submitJob(JobType t, const String& header, const String& cmd, const String& formula) {
+bool submitJob(JobType t, const String& header, const String& cmd, const String& formula, float cap, float cons) {
   std::lock_guard<std::mutex> lk(mtx);
   if (job.state == "pending" || job.state == "running") return false;
   job.type = t;
@@ -596,6 +617,8 @@ bool submitJob(JobType t, const String& header, const String& cmd, const String&
   job.cmd = cmd; job.cmd.trim();
   if (t != JOB_RAW) job.cmd.toUpperCase();
   job.formula = formula;
+  job.cap = cap;
+  job.cons = cons;
   job.state = "pending";
   job.resultJson = "";
   job.progress = "";

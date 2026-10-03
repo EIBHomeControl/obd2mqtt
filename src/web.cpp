@@ -179,7 +179,7 @@ void begin() {
     String cmd = d["cmd"] | "";
     if (jt != Poller::JOB_SCAN && jt != Poller::JOB_DIAG && cmd.isEmpty()) return sendMsg(r, false, T("Befehl fehlt", "Command missing"));
     if (Poller::isPaused()) return sendMsg(r, false, T("Im sicheren Modus / während eines Updates nicht verfügbar", "Not available in safe mode / during an update"), 409);
-    if (!Poller::submitJob(jt, d["header"] | "", cmd, d["formula"] | ""))
+    if (!Poller::submitJob(jt, d["header"] | "", cmd, d["formula"] | "", d["cap"] | 0.0f, d["cons"] | 0.0f))
       return sendMsg(r, false, T("Es läuft bereits ein Auftrag", "Another job is already running"), 409);
     sendMsg(r, true, T("Gestartet", "Started"));
   });
