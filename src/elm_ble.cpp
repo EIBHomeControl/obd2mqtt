@@ -50,6 +50,25 @@ static void drain(uint32_t quietMs, uint32_t maxMs) {
 }
 
 class ClientCb : public NimBLEClientCallbacks {
+  // Kopplung mit PIN (z. B. WiCAN Pro: Passkey-Eingabe, verschlüsselte Verbindung)
+  void onPassKeyEntry(NimBLEConnInfo& info) override {
+    if (cfg.blePin.isEmpty()) {
+      logf("%s", T("Dongle verlangt eine PIN – bitte unter Einstellungen → BLE-Dongle eintragen", "Dongle requires a PIN – please enter it under Settings → BLE dongle"));
+      NimBLEDevice::injectPassKey(info, 0);
+      return;
+    }
+    logf("%s", T("Dongle verlangt PIN – sende gespeicherte PIN", "Dongle requires PIN – sending stored PIN"));
+    NimBLEDevice::injectPassKey(info, (uint32_t)cfg.blePin.toInt());
+  }
+  void onConfirmPasskey(NimBLEConnInfo& info, uint32_t) override { NimBLEDevice::injectConfirmPasskey(info, true); }
+  void onAuthenticationComplete(NimBLEConnInfo& info) override {
+    if (info.isEncrypted()) {
+      if (!quiet) logf("%s", T("BLE-Kopplung OK (verschlüsselt)", "BLE pairing OK (encrypted)"));
+    } else {
+      logf("%s", T("BLE-Kopplung fehlgeschlagen – PIN prüfen (gespeicherte Kopplung wird verworfen)", "BLE pairing failed – check the PIN (stored bond is discarded)"));
+      NimBLEDevice::deleteBond(info.getIdAddress());
+    }
+  }
   void onDisconnect(NimBLEClient*, int reason) override {
     if (reason == 0x216) {   // 0x216 = von uns getrennt (planmäßig)
       if (!quiet) logf("%s", T("BLE getrennt (planmäßig – Dongle darf bis zur nächsten Abfrage schlafen)", "BLE disconnected (scheduled – dongle may sleep until the next poll)"));
@@ -136,6 +155,14 @@ bool connect(String& err) {
   if (cfg.bleMac.length() != 17) { err = T("Keine gültige BLE-MAC konfiguriert", "No valid BLE MAC configured"); return false; }
   disconnect();
 
+  // Sicherheit: mit PIN → Passkey-Eingabe (MITM, Secure Connections, Bonding); ohne PIN → "Just Works"
+  if (cfg.blePin.length()) {
+    NimBLEDevice::setSecurityAuth(true, true, true);
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_KEYBOARD_ONLY);
+  } else {
+    NimBLEDevice::setSecurityAuth(true, false, true);
+    NimBLEDevice::setSecurityIOCap(BLE_HS_IO_NO_INPUT_OUTPUT);
+  }
   client = NimBLEDevice::createClient();
   client->setClientCallbacks(&clientCb, false);
   client->setConnectTimeout(6000);

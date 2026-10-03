@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.16
+- Neu: Dongles mit Kopplungs-PIN (z. B. WiCAN Pro per Bluetooth) – Einstellungen → BLE-Dongle → „PIN / Passkey“; die Bridge koppelt sich automatisch (verschlüsselte Verbindung, gespeicherte Kopplung), Meldungen im Log; bei falscher PIN wird die Kopplung verworfen
+- Handbuch: Abschnitt „Dongle mit PIN (z. B. WiCAN Pro)“
+
 ## 0.3.15
 - Neu: Profil → „Akku & Reichweite“ – Akku-Variante aus Liste wählen (bekannte Größen vorbelegt: IONIQ 5 58–84 kWh, G9, G6, P7+), Kapazität von Hand korrigierbar, Verbrauch in kWh/100 km, Anzeige der rechnerischen Vollreichweite
 - Formeln können die Variablen CAP (nutzbare kWh) und CONS (kWh/100 km) verwenden; die Reichweiten-Formeln der Werksprofile nutzen sie („Test“ rechnet mit den Werten aus dem Formular)

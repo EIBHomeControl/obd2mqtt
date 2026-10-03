@@ -30,7 +30,7 @@ Car (OBD2 dongle) ──Bluetooth LE──► ESP32 in the garage ──WiFi─�
 ## What you need
 
 - **ESP32 dev board** (classic ESP32, e.g. ESP32-DevKitC V4) with a USB power supply, within BLE range of the car
-- **Bluetooth LE OBD2 dongle**, ELM327-compatible, e.g. vLinker MC+/FS, Veepeak BLE+, OBDLink CX or Vgate iCar Pro BLE. *Classic Bluetooth (SPP) dongles without "LE" do not work.*
+- **Bluetooth LE OBD2 dongle**, ELM327-compatible, e.g. vLinker MC+/FS, Veepeak BLE+, OBDLink CX, Vgate iCar Pro BLE or WiCAN Pro (BLE + protocol "elm327", PIN under Settings → BLE dongle). *Classic Bluetooth (SPP) dongles without "LE" do not work.*
 - Home Assistant with an MQTT broker (e.g. the Mosquitto add-on)
 
 ## Flashing

@@ -26,6 +26,7 @@ struct AppConfig {
   String bleAddrType = "auto";          // auto | public | random
   String bleService, bleNotify, bleWrite; // leer = automatisch erkennen
   String bleName;                       // Anzeigename (aus Scan bzw. Dongle)
+  String blePin;                        // BLE-Passkey für Dongles mit Kopplung (z. B. WiCAN Pro: 123456), leer = keiner
 
   // Abfrage
   String profile = "ioniq5";            // Datei /profiles/<name>.json

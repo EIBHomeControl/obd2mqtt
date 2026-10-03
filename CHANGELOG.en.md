@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.16
+- New: dongles with pairing PIN (e.g. WiCAN Pro via Bluetooth) – Settings → BLE dongle → “PIN / passkey”; the bridge pairs automatically (encrypted connection, stored bond), messages in the log; with a wrong PIN the bond is discarded
+- Manual: section “Dongle with PIN (e.g. WiCAN Pro)”
+
 ## 0.3.15
 - New: Profile → “Battery & range” – pick the battery variant from a list (known sizes pre-filled: IONIQ 5 58–84 kWh, G9, G6, P7+), capacity can be corrected by hand, consumption in kWh/100 km, calculated full range shown
 - Formulas can use the variables CAP (usable kWh) and CONS (kWh/100 km); the range formulas of the factory profiles use them (“Test” uses the values from the form)

@@ -21,6 +21,7 @@ ESP32-Firmware, die sich per Bluetooth LE mit einem ELM327-kompatiblen OBD2-Dong
 - 12-V-Schutz (ATRV), Pause wenn das Auto nicht antwortet, BLE wird zwischen den Abfragen getrennt, damit der Dongle schlafen kann
 - Setup-Access-Point mit Captive Portal, mDNS (`http://obd2mqtt.local`), OTA-Update, optionaler Passwortschutz
 - **Diagnose-Bericht** (ein Klick, kopieren/herunterladen, ohne WLAN-/IP-/Passwortdaten) und 2-Stunden-Diagnose-Log – ideal für Beta-Tester
+- Dongles mit Kopplungs-PIN (z. B. WiCAN Pro: Bluetooth aktivieren, Protokoll „elm327“, PIN unter Einstellungen → BLE-Dongle)
 
 ## Flashen
 

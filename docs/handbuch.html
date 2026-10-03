@@ -239,6 +239,8 @@ Für Probleme, die nur ab und zu auftreten: <b>Diagnose-Log</b> einschalten – 
 <p>Das Auto schläft. Die Steuergeräte antworten nur, wenn das Auto eingeschaltet ist oder lädt. Das ist normal – der letzte Wert bleibt in Home Assistant erhalten. Zum Testen: Auto einschalten oder Ladekabel anstecken.</p></details>
 <details><summary>„Dongle nicht erreichbar“</summary>
 <p>Auto nicht in Reichweite, Dongle schläft oder die Bluetooth-Verbindung ist zu schwach. „BLE Signal“ sollte besser als etwa −85 dBm sein – sonst ESP32 näher ans Auto stellen. Wichtig: Der Dongle darf nicht gleichzeitig mit einer Handy-App verbunden sein.</p></details>
+<details><summary>Dongle mit PIN (z. B. WiCAN Pro)</summary>
+<p>Manche Dongles lassen sich nur mit Kopplung nutzen. Beim <b>WiCAN Pro</b>: in dessen Oberfläche Bluetooth aktivieren und als Protokoll „elm327“ wählen. Dann hier unter Einstellungen → BLE-Dongle die PIN eintragen (Standard <code>123456</code>) und speichern. Die Bridge koppelt sich beim ersten Verbinden automatisch; im Log steht „BLE-Kopplung OK“. Bei „Kopplung fehlgeschlagen“ die PIN prüfen – die alte Kopplung wird dann verworfen und beim nächsten Versuch neu aufgebaut.</p></details>
 <details><summary>Es kommen keine Werte in Home Assistant an</summary>
 <p>Im Reiter Status prüfen, ob „MQTT“ grün ist. Falls nicht: Broker-Adresse, Benutzer und Passwort prüfen. In Home Assistant muss die MQTT-Integration eingerichtet sein.</p></details>
 <details><summary>„Unvollständige Antwort“ im Log</summary>

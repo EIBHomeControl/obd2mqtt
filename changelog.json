@@ -1,5 +1,16 @@
 [
  {
+  "v": "0.3.16",
+  "de": [
+   "Neu: Dongles mit Kopplungs-PIN (z. B. WiCAN Pro per Bluetooth) – Einstellungen → BLE-Dongle → „PIN / Passkey“; die Bridge koppelt sich automatisch (verschlüsselte Verbindung, gespeicherte Kopplung), Meldungen im Log; bei falscher PIN wird die Kopplung verworfen",
+   "Handbuch: Abschnitt „Dongle mit PIN (z. B. WiCAN Pro)“"
+  ],
+  "en": [
+   "New: dongles with pairing PIN (e.g. WiCAN Pro via Bluetooth) – Settings → BLE dongle → “PIN / passkey”; the bridge pairs automatically (encrypted connection, stored bond), messages in the log; with a wrong PIN the bond is discarded",
+   "Manual: section “Dongle with PIN (e.g. WiCAN Pro)”"
+  ]
+ },
+ {
   "v": "0.3.15",
   "de": [
    "Neu: Profil → „Akku & Reichweite“ – Akku-Variante aus Liste wählen (bekannte Größen vorbelegt: IONIQ 5 58–84 kWh, G9, G6, P7+), Kapazität von Hand korrigierbar, Verbrauch in kWh/100 km, Anzeige der rechnerischen Vollreichweite",

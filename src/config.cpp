@@ -164,6 +164,7 @@ void configToJson(JsonDocument& d, bool mask) {
   d["ble_notify"] = cfg.bleNotify;
   d["ble_write"] = cfg.bleWrite;
   d["ble_name"] = cfg.bleName;
+  d["ble_pin"] = cfg.blePin;
   d["profile"] = cfg.profile;
   d["poll_enabled"] = cfg.pollEnabled;
   d["min_voltage"] = cfg.minVoltage;
@@ -214,6 +215,8 @@ void configFromJson(JsonVariantConst s) {
   str("ble_notify", cfg.bleNotify);
   str("ble_write", cfg.bleWrite);
   str("ble_name", cfg.bleName);
+  str("ble_pin", cfg.blePin);
+  { String d; for (char c : cfg.blePin) if (isdigit((unsigned char)c)) d += c; cfg.blePin = d.substring(0, 6); }
   str("profile", cfg.profile);
   if (s["poll_enabled"].is<bool>()) cfg.pollEnabled = s["poll_enabled"];
   if (s["min_voltage"].is<float>()) cfg.minVoltage = s["min_voltage"];
