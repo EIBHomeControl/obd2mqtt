@@ -77,6 +77,12 @@ void migrateProfiles() {
       if (name != dp.file) continue;
       JsonDocument fac;
       if (deserializeJson(fac, FPSTR(dp.json))) break;
+      // Lade-Werte beim Einschlafen auf 0 (sleep_zero) wie im Werksprofil
+      for (JsonObject fo : fac["pids"].as<JsonArray>()) {
+        if (!(fo["sleep_zero"] | false)) continue;
+        for (JsonObject o : d["pids"].as<JsonArray>())
+          if (String(o["id"] | "") == String(fo["id"] | "") && !(o["sleep_zero"] | false)) { o["sleep_zero"] = true; changed = true; }
+      }
       if (d["battery_options"].isNull() && !fac["battery_options"].isNull()) {
         JsonArray bo = d["battery_options"].to<JsonArray>();
         for (JsonObject o : fac["battery_options"].as<JsonArray>()) {
@@ -87,6 +93,33 @@ void migrateProfiles() {
         if (!(d["battery_kwh"] | 0.0f)) d["battery_kwh"] = fac["battery_kwh"];
         if (!(d["consumption"] | 0.0f)) d["consumption"] = fac["consumption"];
         changed = true;
+      }
+      // IONIQ 5: Lade-Bits aus 220101 Byte 12 funktionieren nicht (immer 0) → Erkennung über den HV-Strom
+      if (String(dp.file) == "ioniq5") {
+        JsonArray pids = d["pids"].as<JsonArray>();
+        auto has = [&](const char* id) { for (JsonObject o : pids) if (String(o["id"] | "") == id) return true; return false; };
+        for (JsonObject o : pids) {
+          String f = o["formula"] | "";
+          for (JsonObject fo : fac["pids"].as<JsonArray>()) {
+            String id = fo["id"] | "";
+            if (id != String(o["id"] | "")) continue;
+            if ((id == "charging" && f == "bit(B12,7)") || (id == "charging_dc" && f == "bit(B12,6)")) {
+              o["formula"] = fo["formula"];
+              o["name"] = (g_lang == 1 && fo["name_en"].is<const char*>()) ? fo["name_en"] : fo["name"];
+              changed = true;
+            }
+          }
+        }
+        for (const char* id : {"hv_current", "hv_voltage", "charge_power"}) {
+          if (has(id)) continue;
+          for (JsonObject fo : fac["pids"].as<JsonArray>()) {
+            if (String(fo["id"] | "") != id) continue;
+            JsonObject n = pids.add<JsonObject>();
+            for (JsonPair kv : fo) if (String(kv.key().c_str()) != "name_en") n[kv.key()] = kv.value();
+            if (g_lang == 1 && fo["name_en"].is<const char*>()) n["name"] = fo["name_en"];
+            changed = true;
+          }
+        }
       }
       // IONIQ 5: alte Werks-Init (ATST96/ATSTFF ohne ATAT0) → neue mit ATAT0 + fester Flow-Control
       if (String(dp.file) == "ioniq5") {
@@ -297,6 +330,7 @@ bool parseProfile(JsonVariantConst s, Profile& p, String& err) {
     if (j["max"].is<float>()) d.maxVal = j["max"];
     d.precision = constrain(j["precision"] | 1, 0, 4);
     d.enabled = j["enabled"] | true;
+    d.sleepZero = j["sleep_zero"] | false;
 
     if (!validProfileName(d.id)) { err = String(T("Ungültige ID: '", "Invalid ID: '")) + d.id + "' (a-z, 0-9, _ -)"; return false; }
     if (d.header.length() && !isHex(d.header)) { err = d.id + T(": Header muss hex sein", ": header must be hex"); return false; }
@@ -328,6 +362,7 @@ void profileToJson(const Profile& p, JsonDocument& d) {
     if (!isnan(x.minVal)) o["min"] = x.minVal;
     if (!isnan(x.maxVal)) o["max"] = x.maxVal;
     o["precision"] = x.precision; o["enabled"] = x.enabled;
+    if (x.sleepZero) o["sleep_zero"] = true;
   }
 }
 

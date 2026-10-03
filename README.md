@@ -72,7 +72,9 @@ Init: `ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATAT0 ATSTFF ATFCSH7E4 ATFCSD300000 ATFCSM1
 | `range_calc` | 7E4 | 220105 | `B34/2*CAP/CONS` | **calculated** range |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | state of health |
-| `charging` / `charging_dc` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` | charging active / DC charging – **experimental** (WiCAN; evDash reported this byte as always 0 on its car). No plug-detection PID known – the AC plug bit stays 0 with the cable plugged in |
+| `hv_current` / `hv_voltage` | 7E4 | 220101 | `s16(B13,B14)/10` / `u16(B15,B16)/10` | HV current (negative = charging) / HV voltage |
+| `charge_power` | 7E4 | 220101 | `max(0,-s16(B13,B14)*u16(B15,B16)/100000)` | charging power kW |
+| `charging` / `charging_dc` | 7E4 | 220101 | `lt(s16(B13,B14),-5)` / `gt(…kW…,11.5)` | charging (current < −0.5 A) / DC charging (> 11.5 kW) – confirmed on an IONIQ 5 (AC charging 3.7 kW: −7.0 A at 527.5 V). The charging bits in byte 12 always stay 0 on the IONIQ 5 |
 
 Sources: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
 
@@ -115,6 +117,8 @@ WiCAN counts the bytes of the raw CAN frames including the ISO-TP control bytes;
 - Single-frame response: our `B` = WiCAN `B` − 1
 - Multi-frame response: WiCAN `B2…B7` → our `B0…B5`; then WiCAN `B9…B15` → `B6…B12`, `B17…B23` → `B13…B19` etc. (every 8th byte is dropped)
 - WiCAN `S21` (signed) → `s8(B17)`, `[B19:B20]` → `u16(..)`, `B15:7` (bit) → `bit(B12,7)`
+
+Values flagged `"sleep_zero": true` in the profile JSON (e.g. charging power, charging) are set to 0 when the car falls asleep, so Home Assistant does not keep showing the last charging value.
 
 ### Adding your own PIDs
 

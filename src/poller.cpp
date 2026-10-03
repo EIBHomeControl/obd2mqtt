@@ -321,8 +321,22 @@ static void pollDue() {
       carAsleep = asleep;
       ElmBle::quiet = asleep;   // im Schlaf jede Minute verbinden → nicht jedes Mal loggen
       MqttHa::publishText("car_awake", asleep ? "OFF" : "ON");
-      if (asleep)
+      if (asleep) {
         logf(T("Auto schläft (12V %.1f V < %.1f V) – keine Abfragen, damit es schlafen kann", "Car asleep (12V %.1f V < %.1f V) – no queries so it can sleep"), v, cfg.sleepVoltage);
+        // Ein schlafendes Auto lädt nicht: Lade-Werte auf 0, sonst bliebe in HA der letzte Wert stehen
+        bool any = false;
+        for (size_t i = 0; i < profile.pids.size() && i < states.size(); i++) {
+          const PidDef& p = profile.pids[i];
+          if (!p.enabled || !p.sleepZero) continue;
+          {
+            std::lock_guard<std::mutex> lk(mtx);
+            states[i].value = 0;
+          }
+          MqttHa::publishValue(p.id, 0, p.precision);
+          any = true;
+        }
+        if (any) publishStateJson();
+      }
       else
         logf(T("Auto wach (12V %.1f V) – normale Abfrage", "Car awake (12V %.1f V) – normal polling"), v);
     }

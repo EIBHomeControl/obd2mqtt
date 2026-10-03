@@ -117,6 +117,10 @@ static double fnU16(double hi, double lo) { return (double)(((unsigned)hi & 0xFF
 static double fnS16(double hi, double lo) { return (double)(int16_t)(((unsigned)hi & 0xFF) << 8 | ((unsigned)lo & 0xFF)); }
 static double fnS8(double x) { return (double)(int8_t)((unsigned)x & 0xFF); }
 static double fnBit(double x, double n) { return (double)((((unsigned long)x) >> (unsigned)n) & 1UL); }
+static double fnLt(double a, double b) { return a < b ? 1 : 0; }
+static double fnGt(double a, double b) { return a > b ? 1 : 0; }
+static double fnMin(double a, double b) { return a < b ? a : b; }
+static double fnMax(double a, double b) { return a > b ? a : b; }
 
 static double gCap = 0, gCons = 0;
 void setBattery(double capKwh, double consKwh100) { gCap = capKwh; gCons = consKwh100; }
@@ -128,7 +132,7 @@ bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
   std::vector<std::string> names(n);
   std::vector<double> vals(n);
   std::vector<te_variable> vars;
-  vars.reserve(n + 6);
+  vars.reserve(n + 10);
   double cap = gCap, cons = gCons;
   vars.push_back({"CAP", &cap, TE_VARIABLE, nullptr});
   vars.push_back({"CONS", &cons, TE_VARIABLE, nullptr});
@@ -136,6 +140,10 @@ bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
   vars.push_back({"s16", (const void*)fnS16, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
   vars.push_back({"s8", (const void*)fnS8, TE_FUNCTION1 | TE_FLAG_PURE, nullptr});
   vars.push_back({"bit", (const void*)fnBit, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
+  vars.push_back({"lt", (const void*)fnLt, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
+  vars.push_back({"gt", (const void*)fnGt, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
+  vars.push_back({"min", (const void*)fnMin, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
+  vars.push_back({"max", (const void*)fnMax, TE_FUNCTION2 | TE_FLAG_PURE, nullptr});
   for (size_t i = 0; i < n; i++) {
     names[i] = "B" + std::to_string(i);
     vals[i] = bytes[i];
@@ -152,6 +160,7 @@ bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
   value = te_eval(e);
   te_free(e);
   if (std::isnan(value) || std::isinf(value)) { err = T("Ergebnis ungültig", "Invalid result"); return false; }
+  if (value == 0) value = 0;   // -0 → 0
   return true;
 }
 

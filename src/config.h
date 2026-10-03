@@ -55,6 +55,7 @@ struct PidDef {
   float minVal = NAN, maxVal = NAN;     // Plausibilitätsfilter
   int precision = 1;
   bool enabled = true;
+  bool sleepZero = false;               // beim Einschlafen des Autos auf 0 setzen (z. B. Ladeleistung)
 };
 
 struct BatteryOption { String name; float kwh; };

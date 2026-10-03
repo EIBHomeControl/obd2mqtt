@@ -60,7 +60,9 @@ Init: `ATZ ATE0 ATL0 ATS0 ATH0 ATSP6 ATAT0 ATSTFF ATFCSH7E4 ATFCSD300000 ATFCSM1
 | `range_calc` | 7E4 | 220105 | `B34/2*CAP/CONS` | **berechnete** Reichweite |
 | `soc_bms` | 7E4 | 220101 | `B7/2` | BMS-SoC |
 | `soh` | 7E4 | 220105 | `u16(B28,B29)/10` | State of Health |
-| `charging` / `charging_dc` | 7E4 | 220101 | `bit(B12,7)` / `bit(B12,6)` | Laden aktiv / DC-Laden – **experimentell** (WiCAN; bei evDash war dieses Byte am eigenen Auto immer 0). Eine Abfrage für „Stecker drin“ ist nicht bekannt – das AC-Stecker-Bit bleibt auch mit Kabel 0 |
+| `hv_current` / `hv_voltage` | 7E4 | 220101 | `s16(B13,B14)/10` / `u16(B15,B16)/10` | HV-Strom (negativ = Laden) / HV-Spannung |
+| `charge_power` | 7E4 | 220101 | `max(0,-s16(B13,B14)*u16(B15,B16)/100000)` | Ladeleistung kW |
+| `charging` / `charging_dc` | 7E4 | 220101 | `lt(s16(B13,B14),-5)` / `gt(…kW…,11.5)` | Laden aktiv (Strom < −0,5 A) / DC-Laden (> 11,5 kW) – bestätigt am IONIQ 5 (AC-Laden 3,7 kW: −7,0 A bei 527,5 V). Die Lade-Bits in Byte 12 bleiben beim IONIQ 5 immer 0 |
 
 Quellen: [evDash](https://github.com/nickn17/evDash), [WiCAN](https://github.com/meatpiHQ/wican-fw) (`vehicle_profiles/hyundai/ioniq5-6.json`), OVMS.
 
@@ -103,6 +105,8 @@ WiCAN zählt die Bytes der rohen CAN-Frames inklusive der ISO-TP-Steuerbytes, hi
 - Antwort in einem Frame: unser `B` = WiCAN `B` − 1
 - Antwort über mehrere Frames: WiCAN `B2…B7` → unser `B0…B5`; danach: WiCAN `B9…B15` → `B6…B12`, `B17…B23` → `B13…B19` usw. (jedes 8. Byte fällt weg)
 - WiCAN `S21` (signed) → `s8(B17)`, `[B19:B20]` → `u16(..)`, `B15:7` (Bit) → `bit(B12,7)`
+
+Werte mit `"sleep_zero": true` im Profil-JSON (z. B. Ladeleistung, Laden aktiv) werden beim Einschlafen des Autos auf 0 gesetzt, damit in Home Assistant nicht der letzte Ladewert stehen bleibt.
 
 ### Eigene PIDs hinzufügen
 

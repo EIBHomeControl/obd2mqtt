@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.3.18
+- Charging values set to 0 when the car falls asleep: if the car fell asleep right after charging, Home Assistant kept showing the last charging power – charging power, charging, DC charging, HV current (XPeng: charge status, HV current) are now set to 0 when the car falls asleep
+- Profiles: new per-value field “sleep_zero” (in the JSON editor) – set the value to 0 when the car falls asleep; existing factory-derived profiles are extended automatically
+- Note: the charging power is the power arriving in the battery (HV voltage × HV current) – measured at the wallbox it is about 10 % higher when AC charging (test: 3.7 kW in the battery at 4.1 kW at the wallbox)
+
+## 0.3.17
+- IONIQ 5: “Charging” and “DC charging” are now detected from the HV current (the charging bits in 220101 byte 12 always stay 0 on the IONIQ 5) – confirmed during AC charging: −7.0 A at 527.5 V = 3.7 kW
+- IONIQ 5: new values HV current, HV voltage and charging power (kW); existing IONIQ profiles are extended automatically
+- Formulas: new functions lt(a,b), gt(a,b), min(a,b), max(a,b)
+
 ## 0.3.16
 - New: dongles with pairing PIN (e.g. WiCAN Pro via Bluetooth) – Settings → BLE dongle → “PIN / passkey”; the bridge pairs automatically (encrypted connection, stored bond), messages in the log; with a wrong PIN the bond is discarded
 - Manual: section “Dongle with PIN (e.g. WiCAN Pro)”

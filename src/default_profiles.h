@@ -49,12 +49,21 @@ static const char PROFILE_IONIQ5[] PROGMEM = R"JSON({
     { "id": "soh", "name": "SoH", "header": "7E4", "cmd": "220105",
       "formula": "u16(B28,B29)/10", "unit": "%", "icon": "mdi:battery-heart-variant",
       "interval": 3600, "min": 0, "max": 100, "precision": 1, "enabled": true },
-    { "id": "charging", "name": "Laden aktiv (experimentell)", "name_en": "Charging (experimental)", "header": "7E4", "cmd": "220101",
-      "formula": "bit(B12,7)", "icon": "mdi:ev-station", "state_class": "",
-      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true },
-    { "id": "charging_dc", "name": "DC-Laden (experimentell)", "name_en": "DC charging (experimental)", "header": "7E4", "cmd": "220101",
-      "formula": "bit(B12,6)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
-      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true }
+    { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "7E4", "cmd": "220101",
+      "formula": "s16(B13,B14)/10", "unit": "A", "device_class": "current",
+      "interval": 120, "min": -1000, "max": 1000, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "7E4", "cmd": "220101",
+      "formula": "u16(B15,B16)/10", "unit": "V", "device_class": "voltage",
+      "interval": 120, "min": 100, "max": 1000, "precision": 1, "enabled": true },
+    { "id": "charge_power", "name": "Ladeleistung", "name_en": "Charging power", "header": "7E4", "cmd": "220101",
+      "formula": "max(0,-s16(B13,B14)*u16(B15,B16)/100000)", "unit": "kW", "device_class": "power",
+      "interval": 120, "min": 0, "max": 400, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charging", "name": "Laden aktiv", "name_en": "Charging", "header": "7E4", "cmd": "220101",
+      "formula": "lt(s16(B13,B14),-5)", "icon": "mdi:ev-station", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true },
+    { "id": "charging_dc", "name": "DC-Laden", "name_en": "DC charging", "header": "7E4", "cmd": "220101",
+      "formula": "gt(-s16(B13,B14)*u16(B15,B16)/100000,11.5)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 
@@ -102,13 +111,13 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
       "interval": 900, "min": 0, "max": 100, "precision": 0, "enabled": true },
     { "id": "charge_status", "name": "Ladestatus (0=nein, 2/4=DC, 3=AC)", "name_en": "Charging status (0=no, 2/4=DC, 3=AC)", "header": "704", "cmd": "22112D",
       "formula": "B3", "state_class": "", "icon": "mdi:ev-station",
-      "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true },
+      "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true, "sleep_zero": true },
     { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "704", "cmd": "221101",
       "formula": "u16(B3,B4)/10", "unit": "V", "device_class": "voltage",
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 // XPeng G6 – gleiche BMS-PIDs wie G9 (704/784). Die Werte von XPCarData sind am G6 verifiziert.
@@ -154,13 +163,13 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
       "interval": 900, "min": 0, "max": 100, "precision": 0, "enabled": true },
     { "id": "charge_status", "name": "Ladestatus (0=nein, 2/4=DC, 3=AC)", "name_en": "Charging status (0=no, 2/4=DC, 3=AC)", "header": "704", "cmd": "22112D",
       "formula": "B3", "state_class": "", "icon": "mdi:ev-station",
-      "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true },
+      "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true, "sleep_zero": true },
     { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "704", "cmd": "221101",
       "formula": "u16(B3,B4)/10", "unit": "V", "device_class": "voltage",
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 
@@ -205,13 +214,13 @@ static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
       "interval": 900, "min": 0, "max": 100, "precision": 0, "enabled": true },
     { "id": "charge_status", "name": "Ladestatus (0=nein, 2/4=DC, 3=AC)", "name_en": "Charging status (0=no, 2/4=DC, 3=AC)", "header": "704", "cmd": "22112D",
       "formula": "B3", "state_class": "", "icon": "mdi:ev-station",
-      "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true },
+      "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true, "sleep_zero": true },
     { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "704", "cmd": "221101",
       "formula": "u16(B3,B4)/10", "unit": "V", "device_class": "voltage",
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 
