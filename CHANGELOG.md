@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.19
+- Fix: „Letzter Fehler“ wurde nie zurückgesetzt – sobald alle aktiven Werte wieder fehlerfrei gelesen werden, wird er gelöscht (Status-Seite leer, Home Assistant „keiner“)
+
 ## 0.3.18
 - Lade-Werte beim Einschlafen auf 0: Schläft das Auto direkt nach dem Laden ein, blieb sonst in Home Assistant die letzte Ladeleistung stehen – Ladeleistung, Laden aktiv, DC-Laden, HV-Strom (XPeng: Ladestatus, HV-Strom) werden beim Einschlafen jetzt auf 0 gesetzt
 - Profile: neues Feld „sleep_zero“ pro Wert (im JSON-Editor) – Wert beim Einschlafen des Autos auf 0 setzen; bestehende Werksprofil-Ableger werden automatisch ergänzt

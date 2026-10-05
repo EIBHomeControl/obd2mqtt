@@ -1,5 +1,14 @@
 [
  {
+  "v": "0.3.19",
+  "de": [
+   "Fix: „Letzter Fehler“ wurde nie zurückgesetzt – sobald alle aktiven Werte wieder fehlerfrei gelesen werden, wird er gelöscht (Status-Seite leer, Home Assistant „keiner“)"
+  ],
+  "en": [
+   "Fix: “Last error” was never reset – as soon as all active values are read without errors again it is cleared (status page empty, Home Assistant “none”)"
+  ]
+ },
+ {
   "v": "0.3.18",
   "de": [
    "Lade-Werte beim Einschlafen auf 0: Schläft das Auto direkt nach dem Laden ein, blieb sonst in Home Assistant die letzte Ladeleistung stehen – Ladeleistung, Laden aktiv, DC-Laden, HV-Strom (XPeng: Ladestatus, HV-Strom) werden beim Einschlafen jetzt auf 0 gesetzt",

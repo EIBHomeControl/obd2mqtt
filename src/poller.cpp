@@ -362,7 +362,7 @@ static void pollDue() {
   std::map<String, QRes> cache;
   std::vector<uint8_t> bytes;
   String raw, qerr;
-  bool qok = false, anyOk = false, anyTried = false, anyReply = false;
+  bool qok = false, anyOk = false, anyTried = false, anyReply = false, anyErr = false;
   for (size_t i = 0; i < profile.pids.size(); i++) {
     if (!isDue(i, now)) continue;
     const PidDef& p = profile.pids[i];
@@ -403,10 +403,23 @@ static void pollDue() {
       logf("%s = %s %s", p.id.c_str(), String(val, p.precision).c_str(), p.unit.c_str());
     } else {
       setError(p.id + ": " + perr);
+      anyErr = true;
     }
     if (!ElmBle::connected()) { elmReady = false; break; }
   }
   pollCycles++;
+  // Zyklus ohne Fehler → „Letzter Fehler“ zurücksetzen (sonst stünde ein alter Fehler ewig da)
+  // Erst zurücksetzen, wenn KEIN aktiver Wert mehr einen Fehler hat (auch nicht aus früheren Zyklen)
+  if (anyTried && !anyErr) {
+    bool had = false, clean = true;
+    {
+      std::lock_guard<std::mutex> lk(mtx);
+      for (size_t i = 0; i < profile.pids.size() && i < states.size(); i++)
+        if (profile.pids[i].enabled && states[i].err.length()) clean = false;
+      if (clean) { had = lastError.length() > 0; lastError = ""; }
+    }
+    if (had) MqttHa::publishText("last_error", T("keiner", "none"));
+  }
   publishStateJson();
   // Keine Antwort (Auto schläft) → länger warten, damit nichts wachgehalten wird
   if (anyTried && !anyOk && !anyReply && cfg.backoffSec > 0) {

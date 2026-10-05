@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.3.19
+- Fix: “Last error” was never reset – as soon as all active values are read without errors again it is cleared (status page empty, Home Assistant “none”)
+
 ## 0.3.18
 - Charging values set to 0 when the car falls asleep: if the car fell asleep right after charging, Home Assistant kept showing the last charging power – charging power, charging, DC charging, HV current (XPeng: charge status, HV current) are now set to 0 when the car falls asleep
 - Profiles: new per-value field “sleep_zero” (in the JSON editor) – set the value to 0 when the car falls asleep; existing factory-derived profiles are extended automatically
