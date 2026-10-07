@@ -16,4 +16,8 @@ uint32_t crashCount();
 const char* resetReason();          // Grund des letzten Neustarts (Klartext)
 void restart(const char* why);      // geplanter Neustart mit Begründung
 void clearCrashCounter();           // z.B. bei manuellem Neustart
+// Merkt sich (überlebt den Neustart), was die Firmware gerade tut. Hängt sie, steht nach dem
+// Watchdog-Neustart im Log, wobei („Hing bei: BLE subscribe/pairing“). nullptr = nichts Besonderes.
+void step(const char* what);
+const char* hangStep();             // Schritt, bei dem die Firmware vor dem letzten Absturz hing ("" = unbekannt)
 }

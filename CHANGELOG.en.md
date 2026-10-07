@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.21
+- Watchdog: after a hang the log shows where the firmware hung (e.g. “Firmware hung at: BLE subscribe/pairing”) – also in the diagnostic report
+- BLE connection setup hardened: the watchdog is fed before every step, setup is aborted after 20 s and retried later (previously a hanging connection setup or PIN pairing could trigger the 60 s watchdog); the device name is only read on the first connection
+- If the connection drops during initialisation, it is aborted immediately (instead of reporting every init line as “without prompt”)
+- If the connection drops during polling, there is no 10 min pause (“No valid response”) any more – retry after 60 s; error “BLE disconnected” instead of “ATSH… failed”
+- New: if the connection drops repeatedly right after connecting (reason 0x208), the bridge automatically uses slower BLE connection parameters (30–50 ms instead of 7.5–15 ms) – shown in the log, diagnostic report and status
+- Warm-up: after connecting, a short “Tester Present” (3E00) is sent to the ECU before the first query – against the truncated first long response (only when the car is awake)
+- Cleaner log: no [diag] init lines during the minute-by-minute voltage check while asleep; “BLE pairing OK” only the first time; “Dongle not reachable” while the car sleeps only once (dongle sleeps with the car), plus “Dongle reachable again”
+- RSSI: invalid readings right after connecting (e.g. −128 dBm) are shown as “not measured yet”
+- Diagnostic report: up to 3 connection attempts, clean abort with a note on connection loss, restart reason, BLE parameters, drops and RSSI at the end
+- Fix: when scanning again the dongle name was missing (MAC only) – the name from the scan response is now remembered; for the configured dongle the known name is shown as a fallback
+- Formulas: the last value of any other value is available by its ID (e.g. hv_voltage) – for quantities from two responses
+- XPeng G9/G6/P7+: new values charging power (kW), charging and DC charging from HV current × HV voltage (first G9 test: 713 V × −10.5 A ≈ 7.5 kW while AC charging); “Charging status” is now called “raw value” (the G9 returned 1 while AC charging); existing XPeng profiles are extended automatically
+
+## 0.3.20
+- Fix: “Last error” in MQTT still stayed – the old value is retained in the broker and was never overwritten after a restart; also the reset waited for rarely polled values. Now: “none” after every error-free poll cycle, and the current state is sent immediately when MQTT connects
+
 ## 0.3.19
 - Fix: “Last error” was never reset – as soon as all active values are read without errors again it is cleared (status page empty, Home Assistant “none”)
 

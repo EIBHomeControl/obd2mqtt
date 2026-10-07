@@ -121,6 +121,35 @@ void migrateProfiles() {
           }
         }
       }
+      // XPeng: Ladeleistung / Laden aktiv / DC-Laden aus HV-Strom × HV-Spannung ergänzen (0.3.21),
+      // Ladestatus heißt neutral „Rohwert“ (am G9 kommt beim AC-Laden 1, nicht 3 wie bei XPCarData)
+      if (String(dp.file) == "g9" || String(dp.file) == "g6" || String(dp.file) == "p7plus") {
+        JsonArray pids = d["pids"].as<JsonArray>();
+        auto has = [&](const char* id) { for (JsonObject o : pids) if (String(o["id"] | "") == id) return true; return false; };
+        for (JsonObject o : pids) {
+          if (String(o["id"] | "") != "charge_status") continue;
+          String nm = o["name"] | "";
+          if (nm.startsWith("Ladestatus (0=nein") || nm.startsWith("Charging status (0=no")) {
+            for (JsonObject fo : fac["pids"].as<JsonArray>())
+              if (String(fo["id"] | "") == "charge_status") {
+                o["name"] = (g_lang == 1 && fo["name_en"].is<const char*>()) ? fo["name_en"] : fo["name"];
+                changed = true;
+              }
+          }
+        }
+        if (has("hv_current") && has("hv_voltage")) {
+          for (const char* id : {"charge_power", "charging", "charging_dc"}) {
+            if (has(id)) continue;
+            for (JsonObject fo : fac["pids"].as<JsonArray>()) {
+              if (String(fo["id"] | "") != id) continue;
+              JsonObject n = pids.add<JsonObject>();
+              for (JsonPair kv : fo) if (String(kv.key().c_str()) != "name_en") n[kv.key()] = kv.value();
+              if (g_lang == 1 && fo["name_en"].is<const char*>()) n["name"] = fo["name_en"];
+              changed = true;
+            }
+          }
+        }
+      }
       // IONIQ 5: alte Werks-Init (ATST96/ATSTFF ohne ATAT0) → neue mit ATAT0 + fester Flow-Control
       if (String(dp.file) == "ioniq5") {
         String cur;

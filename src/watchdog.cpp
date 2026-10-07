@@ -17,6 +17,8 @@ static const uint32_t SAFE_AFTER = 3;                   // ab 3 Abstürzen in Fo
 RTC_NOINIT_ATTR static uint32_t rtcMagic;
 RTC_NOINIT_ATTR static uint32_t rtcCrashes;
 RTC_NOINIT_ATTR static char rtcWhy[64];
+RTC_NOINIT_ATTR static char rtcStep[32];
+static String hang;
 
 static bool safe = false;
 static bool armed = false;
@@ -47,6 +49,7 @@ void begin() {
     rtcMagic = MAGIC;
     rtcCrashes = 0;
     rtcWhy[0] = 0;
+    rtcStep[0] = 0;
   }
   bool crash = r == ESP_RST_PANIC || r == ESP_RST_INT_WDT || r == ESP_RST_TASK_WDT || r == ESP_RST_WDT;
   if (crash) rtcCrashes++;
@@ -56,9 +59,14 @@ void begin() {
   rtcWhy[0] = 0;
   reason = resetReason();
 
+  rtcStep[sizeof(rtcStep) - 1] = 0;
+  if (crash && rtcStep[0]) hang = rtcStep;
+  rtcStep[0] = 0;
+
   safe = rtcCrashes >= SAFE_AFTER;
   logf(T("Letzter Neustart: %s%s", "Last restart: %s%s"), reason.c_str(),
        crash ? (String(" (") + rtcCrashes + T(". in Folge)", " in a row)")).c_str() : "");
+  if (hang.length()) logf(T("Firmware hing bei: %s", "Firmware hung at: %s"), hang.c_str());
   if (safe) logf(T("SICHERER MODUS: %lu Abstürze in Folge – Bluetooth/Abfragen deaktiviert", "SAFE MODE: %lu crashes in a row – Bluetooth/polling disabled"), (unsigned long)rtcCrashes);
 }
 
@@ -86,6 +94,13 @@ void restart(const char* why) {
 }
 
 void clearCrashCounter() { rtcCrashes = 0; }
+
+void step(const char* what) {
+  if (!what) { rtcStep[0] = 0; return; }
+  if (strncmp(rtcStep, what, sizeof(rtcStep) - 1) == 0) return;
+  strlcpy(rtcStep, what, sizeof(rtcStep));
+}
+const char* hangStep() { return hang.c_str(); }
 
 void loop(bool wifiUp, bool mqttConfigured, bool mqttUp, bool apClients) {
   feed();

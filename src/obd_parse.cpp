@@ -123,6 +123,37 @@ static double fnMin(double a, double b) { return a < b ? a : b; }
 static double fnMax(double a, double b) { return a > b ? a : b; }
 
 static double gCap = 0, gCons = 0;
+static std::vector<std::pair<std::string, double>> gExt;   // Werte anderer PIDs (id → letzter Wert)
+void setValues(const std::vector<std::pair<std::string, double>>& v) { gExt = v; }
+
+static bool isIdent(const std::string& s) {
+  if (s.empty() || !(isalpha((unsigned char)s[0]) || s[0] == '_')) return false;
+  for (char c : s) if (!(isalnum((unsigned char)c) || c == '_')) return false;
+  return true;
+}
+// Kommt der Bezeichner als ganzes Wort in der Formel vor?
+static bool usesIdent(const std::string& f, const std::string& id) {
+  size_t p = 0;
+  while ((p = f.find(id, p)) != std::string::npos) {
+    bool l = p == 0 || !(isalnum((unsigned char)f[p - 1]) || f[p - 1] == '_');
+    size_t e = p + id.size();
+    bool r = e >= f.size() || !(isalnum((unsigned char)f[e]) || f[e] == '_');
+    if (l && r) return true;
+    p = e;
+  }
+  return false;
+}
+static bool reserved(const std::string& s) {
+  static const char* r[] = {"CAP", "CONS", "u16", "s16", "s8", "bit", "lt", "gt", "min", "max"};
+  for (auto x : r) if (s == x) return true;
+  if (s.size() > 1 && s[0] == 'B') {
+    bool dig = true;
+    for (size_t i = 1; i < s.size(); i++) if (!isdigit((unsigned char)s[i])) dig = false;
+    if (dig) return true;
+  }
+  return false;
+}
+
 void setBattery(double capKwh, double consKwh100) { gCap = capKwh; gCons = consKwh100; }
 void getBattery(double& capKwh, double& consKwh100) { capKwh = gCap; consKwh100 = gCons; }
 
@@ -132,7 +163,7 @@ bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
   std::vector<std::string> names(n);
   std::vector<double> vals(n);
   std::vector<te_variable> vars;
-  vars.reserve(n + 10);
+  vars.reserve(n + 10 + gExt.size());
   double cap = gCap, cons = gCons;
   vars.push_back({"CAP", &cap, TE_VARIABLE, nullptr});
   vars.push_back({"CONS", &cons, TE_VARIABLE, nullptr});
@@ -148,6 +179,18 @@ bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
     names[i] = "B" + std::to_string(i);
     vals[i] = bytes[i];
     vars.push_back({names[i].c_str(), &vals[i], TE_VARIABLE, nullptr});
+  }
+  // Werte anderer PIDs, z. B. "hv_voltage" (für Größen aus zwei Antworten wie Ladeleistung)
+  std::vector<double> ext(gExt.size());
+  for (size_t i = 0; i < gExt.size(); i++) {
+    const std::string& id = gExt[i].first;
+    if (!isIdent(id) || reserved(id)) continue;
+    ext[i] = gExt[i].second;
+    if (std::isnan(ext[i]) && usesIdent(formula, id)) {
+      err = std::string(T("Wert '", "Value '")) + id + T("' liegt noch nicht vor", "' not available yet");
+      return false;
+    }
+    vars.push_back({id.c_str(), &ext[i], TE_VARIABLE, nullptr});
   }
   int pos = 0;
   te_expr* e = te_compile(formula.c_str(), vars.data(), (int)vars.size(), &pos);

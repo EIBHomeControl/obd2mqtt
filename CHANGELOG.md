@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.3.21
+- Watchdog: Nach einem Hänger steht im Log, wobei die Firmware hing (z. B. „Firmware hing bei: BLE subscribe/pairing“) – auch im Diagnose-Bericht
+- BLE-Verbindungsaufbau abgesichert: Watchdog wird vor jedem Schritt gefüttert, nach 20 s wird abgebrochen und später neu versucht (bisher konnte ein hängender Verbindungsaufbau bzw. eine hängende PIN-Kopplung den 60-s-Watchdog auslösen); der Gerätename wird nur beim ersten Verbinden gelesen
+- Reißt die Verbindung während der Initialisierung ab, wird sofort abgebrochen (statt jede Init-Zeile „ohne Prompt“ zu melden)
+- Reißt die Verbindung während der Abfrage ab, gibt es keine 10-min-Pause mehr („Keine gültige Antwort“) – neuer Versuch nach 60 s; Fehlermeldung „BLE getrennt“ statt „ATSH… fehlgeschlagen“
+- Neu: Reißt die Verbindung wiederholt kurz nach dem Verbinden ab (Grund 0x208), nutzt die Bridge automatisch langsamere BLE-Verbindungsparameter (30–50 ms statt 7,5–15 ms) – Hinweis im Log, im Diagnose-Bericht und im Status
+- Aufwärmen: Nach dem Verbinden wird vor der ersten Abfrage ein kurzes „Tester Present“ (3E00) an das Steuergerät geschickt – gegen die abgeschnittene erste lange Antwort (nur wenn das Auto wach ist)
+- Log aufgeräumt: keine [diag]-Init-Zeilen mehr bei der minütlichen Spannungsprüfung im Schlaf; „BLE-Kopplung OK“ nur beim ersten Mal; „Dongle nicht erreichbar“ während das Auto schläft nur einmal (Dongle schläft mit dem Auto), dazu „Dongle wieder erreichbar“
+- RSSI: ungültige Messwerte direkt nach dem Verbinden (z. B. −128 dBm) werden als „noch nicht gemessen“ angezeigt
+- Diagnose-Bericht: bis zu 3 Verbindungsversuche, Abbruch mit Hinweis bei Verbindungsverlust, Neustartgrund, BLE-Parameter, Abbrüche und RSSI am Ende
+- Fix: Bei erneuter Dongle-Suche fehlte der Name (nur MAC) – der Name aus der Scan-Antwort wird jetzt gemerkt; beim eingestellten Dongle wird notfalls der bekannte Name angezeigt
+- Formeln: der letzte Wert jedes anderen Werts ist über seine ID verfügbar (z. B. hv_voltage) – für Größen aus zwei Antworten
+- XPeng G9/G6/P7+: neue Werte Ladeleistung (kW), Laden aktiv und DC-Laden aus HV-Strom × HV-Spannung (erster G9-Test: 713 V × −10,5 A ≈ 7,5 kW beim AC-Laden); „Ladestatus“ heißt jetzt „Rohwert“ (am G9 kam beim AC-Laden 1); bestehende XPeng-Profile werden automatisch ergänzt
+
+## 0.3.20
+- Fix: „Letzter Fehler“ in MQTT blieb weiterhin stehen – der alte Wert ist im Broker gespeichert (retained) und wurde nach einem Neustart nie überschrieben; außerdem wartete das Zurücksetzen auf selten abgefragte Werte. Jetzt: nach jedem fehlerfreien Abfragezyklus „keiner“, und beim MQTT-Verbinden wird der aktuelle Stand sofort gesendet
+
 ## 0.3.19
 - Fix: „Letzter Fehler“ wurde nie zurückgesetzt – sobald alle aktiven Werte wieder fehlerfrei gelesen werden, wird er gelöscht (Status-Seite leer, Home Assistant „keiner“)
 

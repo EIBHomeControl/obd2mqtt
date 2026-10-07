@@ -186,7 +186,7 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <li>Profil → <b>+ PID</b>.</li>
 <li><b>Header</b> (Steuergerät, z. B. <code>7E4</code>) und <b>Befehl</b> (z. B. <code>220101</code>) eintragen – solche Angaben findest du in Foren oder Projekten wie evDash, WiCAN oder OVMS.</li>
 <li>Als Formel erst einmal <code>B3</code> eintragen und <b>Test</b> drücken. Du siehst alle empfangenen Bytes mit Nummer (B0, B1, …).</li>
-<li>Formel anpassen, bis der Wert stimmt. Hilfsmittel: <code>u16(B3,B4)</code> = 2-Byte-Zahl, <code>s8(B5)</code> = Zahl mit Vorzeichen, <code>bit(B6,2)</code> = einzelnes Bit.</li>
+<li>Formel anpassen, bis der Wert stimmt. Hilfsmittel: <code>u16(B3,B4)</code> = 2-Byte-Zahl, <code>s8(B5)</code> = Zahl mit Vorzeichen, <code>bit(B6,2)</code> = einzelnes Bit, <code>lt(a,b)</code>/<code>gt(a,b)</code> = Vergleich (1/0), <code>min</code>/<code>max</code>, <code>CAP</code>/<code>CONS</code> = Akku-Kapazität/Verbrauch. Den letzten Wert eines anderen Werts nutzt du über seine ID, z. B. <code>-(u16(B3,B4)*0.5-1600)*hv_voltage/1000</code> = Ladeleistung aus Strom und Spannung.</li>
 <li>Einheit, Klasse und Intervall setzen, Häkchen bei „Aktiv“ und <b>Profil speichern</b>. Home Assistant legt den Sensor automatisch an.</li>
 </ol>
 <p>Tipp: Mit <b>Kopie speichern…</b> legst du vorher eine Sicherung deines Profils an – du vergibst dabei einfach einen Namen, z. B. „Mein G9“. Den Anzeigenamen eines Profils änderst du im Feld <b>Name</b>.</p>

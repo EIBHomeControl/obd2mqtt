@@ -152,11 +152,15 @@ void setup() {
 }
 
 void loop() {
+  Watchdog::step("WiFi");
   wifiLoop();
   Watchdog::loop(cfg.wifiSsid.isEmpty() || WiFi.status() == WL_CONNECTED, cfg.mqttHost.length() > 0, MqttHa::connected(),
                  apActive && WiFi.softAPgetStationNum() > 0);
+  Watchdog::step("MQTT");
   MqttHa::loop();
+  Watchdog::step("Poller");
   Poller::loop();
+  Watchdog::step("Web");
   Web::loop();
 
   static bool timeLogged = false;
@@ -165,6 +169,7 @@ void loop() {
     logf(T("Uhrzeit per NTP synchronisiert (%s)", "Time synchronized via NTP (%s)"), cfg.ntpServer.c_str());
   }
   static uint32_t lastFlush = 0;
-  if (millis() - lastFlush > 5000) { lastFlush = millis(); logFlush(); }
+  if (millis() - lastFlush > 5000) { lastFlush = millis(); Watchdog::step("Log"); logFlush(); }
+  Watchdog::step(nullptr);
   delay(10);
 }

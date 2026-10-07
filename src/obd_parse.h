@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <utility>
 
 namespace ObdParse {
 
@@ -22,6 +23,8 @@ bool parseResponse(const std::string& raw, const std::string& cmd,
 // Akku-Werte des aktiven Profils für Formeln: CAP = nutzbare Kapazität (kWh), CONS = Verbrauch (kWh/100 km)
 void setBattery(double capKwh, double consKwh100);
 void getBattery(double& capKwh, double& consKwh100);
+// Letzte Werte der anderen PIDs als Variablen (Name = PID-ID), z. B. "-I*hv_voltage/1000"
+void setValues(const std::vector<std::pair<std::string, double>>& v);
 bool evalFormula(const std::string& formula, const std::vector<uint8_t>& bytes,
                  double& value, std::string& err);
 

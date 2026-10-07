@@ -146,6 +146,10 @@ static void sendDiscovery() {
     d["entity_category"] = "diagnostic";
     publishConfig("sensor", "ble_rssi", d);
   }
+  { // Letzter Fehler – aktuellen Stand sofort veröffentlichen (überschreibt alten retained Wert)
+    String le = Poller::lastErrorText();
+    mqtt.publish(topic("last_error").c_str(), le.length() ? le.c_str() : T("keiner", "none"), true);
+  }
   { // Letzter Fehler
     JsonDocument d;
     d["name"] = T("Letzter Fehler", "Last error");

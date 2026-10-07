@@ -12,6 +12,8 @@ bool connect(String& err);          // nutzt cfg.bleMac / UUIDs (oder Auto-Erken
 void disconnect();
 extern volatile bool quiet;         // true = Verbinden/Trennen nicht loggen (Auto schläft, Prüfung jede Minute)
 bool connected();
+uint32_t dropCount();               // Zähler ungeplanter Verbindungsabbrüche
+bool relaxedParams();               // true = nach wiederholtem 0x208 auf langsame Verbindungsparameter umgestellt
 int  rssi();
 uint16_t mtu();                     // ausgehandelte MTU (0 = nicht verbunden)
 String detectedUuids();             // "svc / notify / write" nach erfolgreicher Verbindung

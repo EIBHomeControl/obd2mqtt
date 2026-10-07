@@ -186,7 +186,7 @@ mark{background:#ffe58a;color:#000;border-radius:3px;padding:0 1px}
 <li>Profile → <b>+ PID</b>.</li>
 <li>Enter <b>Header</b> (control unit, e.g. <code>7E4</code>) and <b>Command</b> (e.g. <code>220101</code>) – you can find such information in forums or projects such as evDash, WiCAN or OVMS.</li>
 <li>First enter <code>B3</code> as formula and press <b>Test</b>. You will see all received bytes with their number (B0, B1, …).</li>
-<li>Adjust the formula until the value is correct. Helpers: <code>u16(B3,B4)</code> = 2-byte number, <code>s8(B5)</code> = signed number, <code>bit(B6,2)</code> = single bit.</li>
+<li>Adjust the formula until the value is correct. Helpers: <code>u16(B3,B4)</code> = 2-byte number, <code>s8(B5)</code> = signed number, <code>bit(B6,2)</code> = single bit, <code>lt(a,b)</code>/<code>gt(a,b)</code> = comparison (1/0), <code>min</code>/<code>max</code>, <code>CAP</code>/<code>CONS</code> = battery capacity/consumption. Use the last value of another value by its ID, e.g. <code>-(u16(B3,B4)*0.5-1600)*hv_voltage/1000</code> = charging power from current and voltage.</li>
 <li>Set unit, class and interval, tick “Active” and click <b>Save profile</b>. Home Assistant creates the sensor automatically.</li>
 </ol>
 <p>Tip: use <b>Save copy…</b> beforehand to back up your profile – just enter a name, e.g. “My G9”. You change the display name of a profile in the <b>Name</b> field.</p>

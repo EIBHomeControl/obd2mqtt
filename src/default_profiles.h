@@ -109,7 +109,7 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
     { "id": "charge_limit", "name": "Ladelimit", "name_en": "Charge limit", "header": "704", "cmd": "221130",
       "formula": "u16(B3,B4)-10", "unit": "%", "icon": "mdi:battery-charging-high",
       "interval": 900, "min": 0, "max": 100, "precision": 0, "enabled": true },
-    { "id": "charge_status", "name": "Ladestatus (0=nein, 2/4=DC, 3=AC)", "name_en": "Charging status (0=no, 2/4=DC, 3=AC)", "header": "704", "cmd": "22112D",
+    { "id": "charge_status", "name": "Ladestatus (Rohwert, 0 = lädt nicht)", "name_en": "Charging status (raw, 0 = not charging)", "header": "704", "cmd": "22112D",
       "formula": "B3", "state_class": "", "icon": "mdi:ev-station",
       "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true, "sleep_zero": true },
     { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "704", "cmd": "221101",
@@ -117,7 +117,16 @@ static const char PROFILE_G9[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charge_power", "name": "Ladeleistung", "name_en": "Charging power", "header": "704", "cmd": "221103",
+      "formula": "max(0,-(u16(B3,B4)*0.5-1600)*hv_voltage/1000)", "unit": "kW", "device_class": "power",
+      "interval": 120, "min": 0, "max": 500, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charging", "name": "Laden aktiv", "name_en": "Charging", "header": "704", "cmd": "221103",
+      "formula": "lt(u16(B3,B4)*0.5-1600,-2)", "icon": "mdi:ev-station", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true },
+    { "id": "charging_dc", "name": "DC-Laden", "name_en": "DC charging", "header": "704", "cmd": "221103",
+      "formula": "gt(-(u16(B3,B4)*0.5-1600)*hv_voltage/1000,11.5)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 // XPeng G6 – gleiche BMS-PIDs wie G9 (704/784). Die Werte von XPCarData sind am G6 verifiziert.
@@ -161,7 +170,7 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
     { "id": "charge_limit", "name": "Ladelimit", "name_en": "Charge limit", "header": "704", "cmd": "221130",
       "formula": "u16(B3,B4)-10", "unit": "%", "icon": "mdi:battery-charging-high",
       "interval": 900, "min": 0, "max": 100, "precision": 0, "enabled": true },
-    { "id": "charge_status", "name": "Ladestatus (0=nein, 2/4=DC, 3=AC)", "name_en": "Charging status (0=no, 2/4=DC, 3=AC)", "header": "704", "cmd": "22112D",
+    { "id": "charge_status", "name": "Ladestatus (Rohwert, 0 = lädt nicht)", "name_en": "Charging status (raw, 0 = not charging)", "header": "704", "cmd": "22112D",
       "formula": "B3", "state_class": "", "icon": "mdi:ev-station",
       "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true, "sleep_zero": true },
     { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "704", "cmd": "221101",
@@ -169,7 +178,16 @@ static const char PROFILE_G6[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charge_power", "name": "Ladeleistung", "name_en": "Charging power", "header": "704", "cmd": "221103",
+      "formula": "max(0,-(u16(B3,B4)*0.5-1600)*hv_voltage/1000)", "unit": "kW", "device_class": "power",
+      "interval": 120, "min": 0, "max": 500, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charging", "name": "Laden aktiv", "name_en": "Charging", "header": "704", "cmd": "221103",
+      "formula": "lt(u16(B3,B4)*0.5-1600,-2)", "icon": "mdi:ev-station", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true },
+    { "id": "charging_dc", "name": "DC-Laden", "name_en": "DC charging", "header": "704", "cmd": "221103",
+      "formula": "gt(-(u16(B3,B4)*0.5-1600)*hv_voltage/1000,11.5)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 
@@ -212,7 +230,7 @@ static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
     { "id": "charge_limit", "name": "Ladelimit", "name_en": "Charge limit", "header": "704", "cmd": "221130",
       "formula": "u16(B3,B4)-10", "unit": "%", "icon": "mdi:battery-charging-high",
       "interval": 900, "min": 0, "max": 100, "precision": 0, "enabled": true },
-    { "id": "charge_status", "name": "Ladestatus (0=nein, 2/4=DC, 3=AC)", "name_en": "Charging status (0=no, 2/4=DC, 3=AC)", "header": "704", "cmd": "22112D",
+    { "id": "charge_status", "name": "Ladestatus (Rohwert, 0 = lädt nicht)", "name_en": "Charging status (raw, 0 = not charging)", "header": "704", "cmd": "22112D",
       "formula": "B3", "state_class": "", "icon": "mdi:ev-station",
       "interval": 120, "min": 0, "max": 10, "precision": 0, "enabled": true, "sleep_zero": true },
     { "id": "hv_voltage", "name": "HV-Spannung", "name_en": "HV voltage", "header": "704", "cmd": "221101",
@@ -220,7 +238,16 @@ static const char PROFILE_P7PLUS[] PROGMEM = R"JSON({
       "interval": 120, "min": 0, "max": 1000, "precision": 1, "enabled": true },
     { "id": "hv_current", "name": "HV-Strom (negativ = Laden)", "name_en": "HV current (negative = charging)", "header": "704", "cmd": "221103",
       "formula": "u16(B3,B4)*0.5-1600", "unit": "A", "device_class": "current",
-      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true }
+      "interval": 120, "min": -1600, "max": 1600, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charge_power", "name": "Ladeleistung", "name_en": "Charging power", "header": "704", "cmd": "221103",
+      "formula": "max(0,-(u16(B3,B4)*0.5-1600)*hv_voltage/1000)", "unit": "kW", "device_class": "power",
+      "interval": 120, "min": 0, "max": 500, "precision": 1, "enabled": true, "sleep_zero": true },
+    { "id": "charging", "name": "Laden aktiv", "name_en": "Charging", "header": "704", "cmd": "221103",
+      "formula": "lt(u16(B3,B4)*0.5-1600,-2)", "icon": "mdi:ev-station", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true },
+    { "id": "charging_dc", "name": "DC-Laden", "name_en": "DC charging", "header": "704", "cmd": "221103",
+      "formula": "gt(-(u16(B3,B4)*0.5-1600)*hv_voltage/1000,11.5)", "icon": "mdi:ev-plug-ccs2", "state_class": "",
+      "interval": 120, "min": 0, "max": 1, "precision": 0, "enabled": true, "sleep_zero": true }
   ]
 })JSON";
 

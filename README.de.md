@@ -85,10 +85,16 @@ Die Grundlage ist das WiCAN-Profil `xpeng_g6.json`. Korrigiert habe ich es nach 
 | `range_calc` | 221109 | `u16(B3,B4)/10*CAP/CONS` | berechnete Reichweite |
 | `soh` | 22110A | `u16(B3,B4)/10` | State of Health |
 | `charge_limit` | 221130 | `u16(B3,B4)-10` | Ladelimit % |
-| `charge_status` | 22112D | `B3` (0 = nein, 2/4 = DC, 3 = AC) | Ladestatus |
-| `hv_voltage` / `hv_current` | 221101 / 221103 | | HV-Spannung / -Strom |
+| `charge_status` | 22112D | `B3` (Rohwert, 0 = lädt nicht) | Ladestatus – am G9 kam beim AC-Laden 1 (XPCarData nennt 3 für AC) |
+| `hv_voltage` / `hv_current` | 221101 / 221103 | `u16(B3,B4)/10` / `u16(B3,B4)*0.5-1600` | HV-Spannung / -Strom (negativ = Laden) |
+| `charge_power` | 221103 | `max(0,-(u16(B3,B4)*0.5-1600)*hv_voltage/1000)` | Ladeleistung im Akku (kW) |
+| `charging` / `charging_dc` | 221103 | Strom < −2 A / Leistung > 11,5 kW | Laden aktiv / DC-Laden |
 
-**Wichtig:** Alle Werte stammen vom G6, am G9 ist nichts davon verifiziert, beim G9 MY25 erst recht nicht. Prüfe jeden Wert per Test-Button gegen die Anzeige im Auto. Kommt `NO DATA` oder eine negative Antwort (NRC 0x31), verwendet der G9 dort eine andere Adresse.
+`charge_power` und `charging_dc` verbinden zwei Antworten: Formeln dürfen den letzten Wert jedes anderen Werts über seine ID verwenden (hier `hv_voltage`).
+
+**Erster G9-Test (Forumsmitglied, Vgate iCar 2S Pro):** SoC, Temperaturen, Kilometerstand, beide Reichweiten, SoH, HV-Spannung/-Strom und Ladestatus sind plausibel (AC-Laden: 713 V × −10,5 A ≈ 7,5 kW, passt zum SoC-Anstieg). `charge_limit` stimmt noch nicht (Rohwert 210) und wird korrigiert, sobald Rohdaten vorliegen.
+
+**Wichtig:** Die meisten Werte stammen vom G6 und sind am G9 erst teilweise verifiziert, beim G9 MY25 noch gar nicht. Prüfe jeden Wert per Test-Button gegen die Anzeige im Auto. Kommt `NO DATA` oder eine negative Antwort (NRC 0x31), verwendet der G9 dort eine andere Adresse.
 
 ### XPeng G6 / P7+
 
@@ -147,6 +153,9 @@ Discovery läuft unter `homeassistant/sensor/obd2mqtt_xxxxxx/<id>/config`.
 - **12-V-Batterie**: Standardmäßig wird nur alle 120 s abgefragt, BLE dazwischen getrennt und unter 12,2 V pausiert. Wenn das Auto nicht antwortet (es schläft), wartet die Bridge 10 min. Einen Dongle mit Auto-Sleep verwenden (z. B. Vgate iCar Pro BLE, vLinker MC+/FS BLE, OBDLink CX).
 - **Wann antwortet das Auto?** Beim IONIQ 5 antwortet das BMS meist nur bei Zündung an oder während des Ladens. Im Schlaf kommt `NO DATA`. Der letzte Wert bleibt in Home Assistant erhalten (retained).
 - Nur **BLE**-Dongles (Bluetooth 4.0+) werden unterstützt, keine Bluetooth-Classic-Adapter (SPP).
+- **Die Dongle-Qualität zählt:** Billige Nachbauten („OBDII v1.5“, MTU 23) liefern lange mehrteilige Antworten oft abgeschnitten – die Bridge wiederholt, aber Werte kommen später und im Log stehen Wiederholungen. Gute Dongles (WiCAN Pro, vLinker, Vgate iCar 2S Pro, OBDLink CX; MTU 247) sind spürbar zuverlässiger. Ein BLE-Dongle nimmt nur **eine** Verbindung an: OBD-Apps auf dem Handy schließen (oder Bluetooth aus), solange die Bridge läuft.
+- **Verbindungsabbrüche (Grund 0x208):** Reißt die Verbindung wiederholt kurz nach dem Verbinden ab, stellt die Bridge selbst auf langsamere BLE-Verbindungsparameter um (steht im Log und im Diagnose-Bericht).
+- **Watchdog-Neustart:** Nach einem Hänger steht jetzt auch im Log, *wobei* die Firmware hing (z. B. „Firmware hing bei: BLE subscribe/pairing“).
 - Befehle werden mit `ATH0`/`ATS0`/`ATCAF1` erwartet (in den Init-Befehlen gesetzt).
 
 ## Projektstruktur
