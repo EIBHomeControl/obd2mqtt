@@ -14,4 +14,6 @@ bool logReadFile(bool old, String& out);
 size_t logReadChunk(bool old, size_t offset, uint8_t* buf, size_t maxLen);   // stückweise lesen (wenig RAM)
 bool logFileExists(bool old);   // Log-Datei lesen (thread-sicher)
 void logBootCheck(uint32_t crashes);       // beim Start: Log-Dateien bei Absturzserie/vollem Flash entfernen
-bool timeValid();
+bool timeValid();                 // Uhrzeit per NTP gesetzt und plausibel
+void timeInit(const char* tz);    // früh in setup(): Zeitzone, Plausibilitätsprüfung, NTP-Rückruf
+void timeLoop(const char* server);  // in loop(): NTP-Antworten prüfen

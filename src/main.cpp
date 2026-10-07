@@ -13,7 +13,27 @@
 
 static DNSServer dns;
 static bool apActive = false;
-static uint32_t staConnectedSince = 0, staLostSince = 0;
+static uint32_t staConnectedSince = 0, staLostSince = 0, staRetryMs = 0;
+static volatile int staDiscReason = -1;   // aus dem WLAN-Ereignis (anderer Task) → in wifiLoop loggen
+static int staLastRssi = 0;
+static uint32_t staReconnects = 0;
+
+static const char* wifiReasonText(int r) {
+  switch (r) {
+    case 2:   return T("Anmeldung abgelaufen", "auth expired");
+    case 3:   return T("vom Router abgemeldet", "deauthenticated by router");
+    case 4:   return T("Zuordnung abgelaufen (Inaktivität)", "association expired (inactivity)");
+    case 8:   return T("Gerät hat sich abgemeldet", "station left");
+    case 15:  return T("Schlüsselaustausch Zeitüberschreitung (Passwort?)", "4-way handshake timeout (password?)");
+    case 200: return T("Beacon-Timeout (Signal zu schwach / Funkstörung)", "beacon timeout (weak signal / interference)");
+    case 201: return T("WLAN nicht gefunden", "network not found");
+    case 202: return T("Anmeldung fehlgeschlagen (Passwort?)", "authentication failed (password?)");
+    case 203: return T("Zuordnung fehlgeschlagen", "association failed");
+    case 204: return T("Handshake-Timeout", "handshake timeout");
+    case 205: return T("Verbindung fehlgeschlagen", "connection failed");
+    default:  return T("sonstiger Grund", "other reason");
+  }
+}
 
 static void startAP() {
   if (apActive) return;
@@ -80,6 +100,8 @@ static void wifiBegin() {
   if (cfg.wifiSsid.isEmpty()) { startAP(); return; }
   WiFi.mode(WIFI_STA);
   WiFi.setAutoReconnect(true);
+  WiFi.onEvent([](WiFiEvent_t, WiFiEventInfo_t info) { staDiscReason = info.wifi_sta_disconnected.reason; },
+               ARDUINO_EVENT_WIFI_STA_DISCONNECTED);
   bool useStatic = applyStaticIp();
   WiFi.begin(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str());
   logf(T("Verbinde mit WLAN '%s' (%s)…", "Connecting to WiFi '%s' (%s)…"), cfg.wifiSsid.c_str(),
@@ -110,17 +132,38 @@ static void wifiLoop() {
   if (cfg.wifiSsid.isEmpty()) return;
   bool up = WiFi.status() == WL_CONNECTED;
   uint32_t now = millis();
+  int dr = staDiscReason;
+  if (dr >= 0) {
+    staDiscReason = -1;
+    if (staConnectedSince || !staLostSince)   // nur den ersten Abriss melden, nicht jeden gescheiterten Versuch
+      logf(T("WLAN getrennt (Grund %d: %s, letztes Signal %d dBm)", "WiFi disconnected (reason %d: %s, last signal %d dBm)"),
+           dr, wifiReasonText(dr), staLastRssi);
+  }
   if (up) {
     staLostSince = 0;
+    static uint32_t lastRssiMs = 0;
+    if (now - lastRssiMs > 10000) { lastRssiMs = now; staLastRssi = WiFi.RSSI(); }
     if (!staConnectedSince) {
       staConnectedSince = now;
-      logf(T("WLAN verbunden, IP %s", "WiFi connected, IP %s"), WiFi.localIP().toString().c_str());
+      logf(T("WLAN verbunden, IP %s, Signal %d dBm", "WiFi connected, IP %s, signal %d dBm"), WiFi.localIP().toString().c_str(), (int)WiFi.RSSI());
     }
     // AP abschalten, wenn STA stabil läuft und niemand am AP hängt
     if (apActive && now - staConnectedSince > 120000 && WiFi.softAPgetStationNum() == 0) stopAP();
   } else {
     staConnectedSince = 0;
-    if (!staLostSince) staLostSince = now;
+    if (!staLostSince) { staLostSince = now; staRetryMs = now; }
+    // Das automatische Wiederverbinden des ESP32-Cores bleibt bei manchen Trenngründen (z. B. FritzBox)
+    // hängen → alle 30 s selbst neu verbinden
+    if (now - staRetryMs > 30000) {
+      staRetryMs = now;
+      staReconnects++;
+      WiFi.disconnect(false, false);
+      delay(100);
+      WiFi.begin(cfg.wifiSsid.c_str(), cfg.wifiPass.c_str());
+      if (staReconnects % 10 == 1)
+        logf(T("WLAN: neuer Verbindungsversuch (seit %lus getrennt)", "WiFi: reconnect attempt (disconnected for %lus)"),
+             (unsigned long)((now - staLostSince) / 1000));
+    }
     if (!apActive && now - staLostSince > 180000) startAP();   // 3 min ohne WLAN → Setup-AP
   }
 }
@@ -131,8 +174,7 @@ void setup() {
   bool fsOk = fsBegin();
   bool cfgOk = loadConfig();
   // Zeitzone sofort setzen: nach einem Software-Neustart läuft die Uhr weiter, Log-Zeilen sollen gleich Ortszeit haben
-  setenv("TZ", cfg.tz.c_str(), 1);
-  tzset();
+  timeInit(cfg.tz.c_str());
   logf("OBD2MQTT %s start", FW_VERSION);
   if (!fsOk) logf("LittleFS error!");
   Watchdog::begin();
@@ -163,11 +205,7 @@ void loop() {
   Watchdog::step("Web");
   Web::loop();
 
-  static bool timeLogged = false;
-  if (!timeLogged && timeValid()) {
-    timeLogged = true;
-    logf(T("Uhrzeit per NTP synchronisiert (%s)", "Time synchronized via NTP (%s)"), cfg.ntpServer.c_str());
-  }
+  timeLoop(cfg.ntpServer.c_str());
   static uint32_t lastFlush = 0;
   if (millis() - lastFlush > 5000) { lastFlush = millis(); Watchdog::step("Log"); logFlush(); }
   Watchdog::step(nullptr);

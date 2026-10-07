@@ -3,6 +3,7 @@
 #include <deque>
 #include <mutex>
 #include <time.h>
+#include "i18n.h"
 
 static std::mutex mtx;
 static std::mutex fmtx;               // serialisiert alle Zugriffe auf die Log-Dateien (loop- und Web-Task)
@@ -15,7 +16,73 @@ static bool persist = true;
 static const char* LOG_FILE = "/log.txt";
 static const char* LOG_OLD = "/log.old.txt";
 
-bool timeValid() { return time(nullptr) > 1700000000; }
+// ---------- Uhrzeit ----------
+// Die Zeit gilt erst als gültig, wenn sie plausibel ist (nicht vor dem Firmware-Bau, höchstens 5 Jahre danach)
+// oder von einer zweiten NTP-Antwort bestätigt wurde. Ein fehlerhafter NTP-Server lieferte z. B. 2034.
+#include <esp_sntp.h>
+static volatile bool gTimeOk = false;
+static volatile bool gSyncEvent = false;
+static time_t gBuild = 0;
+static time_t gCand = 0;          // unplausible Zeit, wartet auf Bestätigung
+static uint32_t gCandMs = 0, gLastRestart = 0;
+
+static time_t buildEpoch() {
+  static const char* mon = "JanFebMarAprMayJunJulAugSepOctNovDec";
+  char m[4] = {0};
+  int d = 1, y = 2026;
+  sscanf(__DATE__, "%3s %d %d", m, &d, &y);
+  struct tm t = {};
+  t.tm_year = y - 1900;
+  t.tm_mon = (int)((strstr(mon, m) - mon) / 3);
+  t.tm_mday = d;
+  t.tm_hour = 12;
+  setenv("TZ", "UTC0", 1); tzset();
+  time_t r = mktime(&t);
+  return r;
+}
+static bool plausible(time_t t) { return t >= gBuild - 86400 && t <= gBuild + 5L * 365 * 86400; }
+static void onSync(struct timeval*) { gSyncEvent = true; }
+
+void timeInit(const char* tz) {
+  gBuild = buildEpoch();
+  setenv("TZ", tz, 1); tzset();
+  gTimeOk = plausible(time(nullptr));   // nach Software-Neustart läuft die Uhr weiter
+  sntp_set_time_sync_notification_cb(onSync);
+}
+
+static String fmtTime(time_t t) {
+  struct tm tmv; localtime_r(&t, &tmv);
+  char b[24]; strftime(b, sizeof(b), "%Y-%m-%d %H:%M:%S", &tmv);
+  return b;
+}
+
+void timeLoop(const char* server) {
+  if (!gSyncEvent) {
+    // Unplausible Zeit gesetzt und noch keine Bestätigung: jede Minute neu anfragen
+    if (!gTimeOk && gCand && millis() - gLastRestart > 60000) { gLastRestart = millis(); sntp_restart(); }
+    return;
+  }
+  gSyncEvent = false;
+  time_t t = time(nullptr);
+  bool was = gTimeOk;
+  if (plausible(t)) {
+    gTimeOk = true;
+    gCand = 0;
+  } else if (gCand && labs((long)((t - gCand) - (time_t)((millis() - gCandMs) / 1000))) < 300) {
+    gTimeOk = true;   // zweite Antwort bestätigt die (ungewöhnliche) Zeit
+    gCand = 0;
+  } else {
+    gTimeOk = false;
+    gCand = t; gCandMs = millis(); gLastRestart = millis();
+    logf("NTP: %s %s – %s", T("unplausible Uhrzeit", "implausible time"), fmtTime(t).c_str(),
+         T("verworfen, frage erneut", "discarded, asking again"));
+    sntp_restart();
+    return;
+  }
+  if (!was && gTimeOk) logf(T("Uhrzeit per NTP synchronisiert (%s)", "Time synchronized via NTP (%s)"), server);
+}
+
+bool timeValid() { return gTimeOk; }
 
 static void stamp(char* ts, size_t n) {
   if (timeValid()) {

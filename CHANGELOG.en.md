@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.22
+- WiFi: after a disconnect the bridge reconnects by itself every 30 s – the ESP32's automatic reconnect got stuck on some disconnect reasons until the watchdog restarted after 15 min
+- WiFi: disconnect reason in the log (e.g. “reason 200: beacon timeout (weak signal / interference)”) with the last signal value; the signal strength is shown when connecting
+- Time: implausible NTP times (before the firmware build or more than 5 years after it, e.g. 2034) are discarded and requested again; until a valid time is available the log shows the uptime
+
 ## 0.3.21
 - Watchdog: after a hang the log shows where the firmware hung (e.g. “Firmware hung at: BLE subscribe/pairing”) – also in the diagnostic report
 - BLE connection setup hardened: the watchdog is fed before every step, setup is aborted after 20 s and retried later (previously a hanging connection setup or PIN pairing could trigger the 60 s watchdog); the device name is only read on the first connection

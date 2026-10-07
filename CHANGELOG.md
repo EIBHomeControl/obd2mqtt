@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.3.22
+- WLAN: Nach einem Abriss verbindet die Bridge alle 30 s selbst neu – das automatische Wiederverbinden des ESP32 blieb bei manchen Trenngründen hängen, bis nach 15 min der Watchdog neu startete
+- WLAN: Trenngrund im Log (z. B. „Grund 200: Beacon-Timeout (Signal zu schwach / Funkstörung)“) mit dem letzten Signalwert; beim Verbinden wird die Signalstärke angezeigt
+- Uhrzeit: Unplausible NTP-Zeiten (vor dem Firmware-Bau oder mehr als 5 Jahre danach, z. B. 2034) werden verworfen und neu angefragt; bis zur gültigen Zeit zeigt das Log die Laufzeit
+
 ## 0.3.21
 - Watchdog: Nach einem Hänger steht im Log, wobei die Firmware hing (z. B. „Firmware hing bei: BLE subscribe/pairing“) – auch im Diagnose-Bericht
 - BLE-Verbindungsaufbau abgesichert: Watchdog wird vor jedem Schritt gefüttert, nach 20 s wird abgebrochen und später neu versucht (bisher konnte ein hängender Verbindungsaufbau bzw. eine hängende PIN-Kopplung den 60-s-Watchdog auslösen); der Gerätename wird nur beim ersten Verbinden gelesen
