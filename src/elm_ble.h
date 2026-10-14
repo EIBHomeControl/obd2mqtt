@@ -8,6 +8,7 @@ namespace ElmBle {
 struct ScanEntry { String mac, name; int rssi; bool addrRandom; bool likelyObd; };
 
 void begin();
+void shutdown();                    // Bluetooth ganz abschalten (gibt RAM frei, z. B. für das Online-Update)
 bool connect(String& err);          // nutzt cfg.bleMac / UUIDs (oder Auto-Erkennung)
 void disconnect();
 extern volatile bool quiet;         // true = Verbinden/Trennen nicht loggen (Auto schläft, Prüfung jede Minute)

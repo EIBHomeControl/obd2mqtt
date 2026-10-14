@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.23
+- New: online update (System → Online update) – checks the latest release on GitHub, shows the changes since the installed version and installs the *-esp32-ota.bin directly from the internet at the push of a button (encrypted connection with certificate check, size and image check, then restart)
+- Automatic check 3 min after start and then daily (can be switched off in the settings); a new version is noted in the log
+- Home Assistant: new update entity “Firmware” – shows installed and latest version, “Install” starts the online update
+- Fix: “Download backup” produced an empty file (0 bytes) – the backup was built completely in RAM (JSON document, text and another copy for the response, together ~3 × 30 KB), which failed when memory was tight. It is now sent in pieces: settings, then every profile directly from its file
+- Restore needs less memory: the uploaded file is parsed directly in the receive buffer instead of being copied twice
+
 ## 0.3.22
 - WiFi: after a disconnect the bridge reconnects by itself every 30 s – the ESP32's automatic reconnect got stuck on some disconnect reasons until the watchdog restarted after 15 min
 - WiFi: disconnect reason in the log (e.g. “reason 200: beacon timeout (weak signal / interference)”) with the last signal value; the signal strength is shown when connecting

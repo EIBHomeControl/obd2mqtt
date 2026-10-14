@@ -1,5 +1,22 @@
 [
  {
+  "v": "0.3.23",
+  "de": [
+   "Neu: Online-Update (System → Online-Update) – prüft das neueste Release auf GitHub, zeigt die Änderungen seit der installierten Version und installiert die *-esp32-ota.bin auf Knopfdruck direkt aus dem Internet (verschlüsselte Verbindung mit Zertifikatsprüfung, Größen- und Image-Prüfung, danach Neustart)",
+   "Automatische Prüfung 3 min nach dem Start und danach täglich (abschaltbar unter Einstellungen); neue Version steht im Log",
+   "Home Assistant: neue Update-Entität „Firmware“ – zeigt installierte und neueste Version, „Installieren“ startet das Online-Update",
+   "Fix: „Sicherung herunterladen“ lieferte eine leere Datei (0 Byte) – die Sicherung wurde komplett im RAM aufgebaut (JSON-Dokument, Text und eine weitere Kopie für die Antwort, zusammen ~3 × 30 KB), das schlug bei knappem Speicher fehl. Jetzt wird sie stückweise gesendet: Einstellungen, dann jedes Profil direkt aus der Datei",
+   "Wiederherstellen braucht weniger Speicher: die hochgeladene Datei wird direkt im Empfangspuffer ausgewertet statt zweimal kopiert"
+  ],
+  "en": [
+   "New: online update (System → Online update) – checks the latest release on GitHub, shows the changes since the installed version and installs the *-esp32-ota.bin directly from the internet at the push of a button (encrypted connection with certificate check, size and image check, then restart)",
+   "Automatic check 3 min after start and then daily (can be switched off in the settings); a new version is noted in the log",
+   "Home Assistant: new update entity “Firmware” – shows installed and latest version, “Install” starts the online update",
+   "Fix: “Download backup” produced an empty file (0 bytes) – the backup was built completely in RAM (JSON document, text and another copy for the response, together ~3 × 30 KB), which failed when memory was tight. It is now sent in pieces: settings, then every profile directly from its file",
+   "Restore needs less memory: the uploaded file is parsed directly in the receive buffer instead of being copied twice"
+  ]
+ },
+ {
   "v": "0.3.22",
   "de": [
    "WLAN: Nach einem Abriss verbindet die Bridge alle 30 s selbst neu – das automatische Wiederverbinden des ESP32 blieb bei manchen Trenngründen hängen, bis nach 15 min der Watchdog neu startete",

@@ -4,10 +4,13 @@
 #include <WiFi.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+#include <memory>
+#include <vector>
 #include "config.h"
 #include "log.h"
 #include "i18n.h"
 #include "poller.h"
+#include "online_update.h"
 #include "web_ui.h"
 #include "help_ui.h"
 #include "watchdog.h"
@@ -260,41 +263,77 @@ void begin() {
   });
 
   // ---------- Sichern & Wiederherstellen ----------
-  // GET /api/backup?secrets=1  → JSON-Datei mit Einstellungen + allen Profilen
+  // GET /api/backup?secrets=1  → JSON-Datei mit Einstellungen + allen Profilen.
+  // Wird stückweise gesendet: Kopf (Einstellungen) und dann jedes Profil direkt aus der Datei.
+  // Vorher wurde alles im RAM zusammengebaut (JSON-Dokument + Text + Kopie in der Antwort, ~3 × 30 KB) –
+  // bei knappem Heap schlug das fehl und die Datei war 0 Byte groß.
   server.on("/api/backup", HTTP_GET, [](AsyncWebServerRequest* r) {
     if (!auth(r)) return;
     bool secrets = r->hasParam("secrets") && r->getParam("secrets")->value() == "1";
-    JsonDocument d;
-    d["type"] = "obd2mqtt-backup";
-    d["format"] = 1;
-    d["fw"] = FW_VERSION;
+    struct Bk { String piece; size_t pos = 0; std::vector<String> names; size_t next = 0; bool done = false, first = true; };
+    auto st = std::make_shared<Bk>();
     char ts[24] = "";
-    if (timeValid()) {
-      time_t now = time(nullptr);
-      struct tm t;
-      localtime_r(&now, &t);
-      strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &t);
-      d["created"] = ts;
-    }
-    d["with_secrets"] = secrets;
     {
-      JsonDocument c;
-      {
-        std::lock_guard<std::mutex> lk(Poller::mutex());
-        configToJson(c, !secrets);
+      JsonDocument d;
+      d["type"] = "obd2mqtt-backup";
+      d["format"] = 1;
+      d["fw"] = FW_VERSION;
+      if (timeValid()) {
+        time_t now = time(nullptr);
+        struct tm t;
+        localtime_r(&now, &t);
+        strftime(ts, sizeof(ts), "%Y-%m-%d %H:%M:%S", &t);
+        d["created"] = ts;
       }
-      d["config"] = c;
+      d["with_secrets"] = secrets;
+      JsonObject c = d["config"].to<JsonObject>();
+      {
+        JsonDocument cd;
+        {
+          std::lock_guard<std::mutex> lk(Poller::mutex());
+          configToJson(cd, !secrets);
+        }
+        c.set(cd.as<JsonObjectConst>());
+      }
+      serializeJsonPretty(d, st->piece);
     }
-    JsonObject pr = d["profiles"].to<JsonObject>();
-    for (auto& n : listProfiles()) {
-      JsonDocument p;
-      if (!deserializeJson(p, readProfileRaw(n))) pr[n] = p;
-    }
-    String out;
-    serializeJsonPretty(d, out);
-    AsyncWebServerResponse* res = r->beginResponse(200, "application/json", out);
+    // Kopf ohne schließende Klammer, dann folgt "profiles"
+    int k = st->piece.lastIndexOf('}');
+    if (k < 0 || st->piece.isEmpty()) return sendMsg(r, false, T("Zu wenig Speicher für die Sicherung", "Not enough memory for the backup"), 500);
+    st->piece = st->piece.substring(0, k);
+    while (st->piece.length() && isspace((unsigned char)st->piece[st->piece.length() - 1])) st->piece.remove(st->piece.length() - 1);
+    st->piece += ",\n  \"profiles\": {";
+    for (auto& n : listProfiles()) st->names.push_back(n);
+
+    AsyncWebServerResponse* res = r->beginChunkedResponse("application/json", [st](uint8_t* buf, size_t maxLen, size_t) -> size_t {
+      size_t out = 0;
+      while (out < maxLen) {
+        if (st->pos >= st->piece.length()) {
+          if (st->done) break;
+          // nächstes Stück erzeugen: ein Profil (unverändert aus der Datei) bzw. der Abschluss
+          st->piece = "";
+          st->pos = 0;
+          while (st->piece.isEmpty() && st->next < st->names.size()) {
+            const String& n = st->names[st->next];
+            String raw = readProfileRaw(n);
+            raw.trim();
+            st->next++;
+            if (!raw.startsWith("{") || !raw.endsWith("}")) continue;   // defekte Datei überspringen
+            st->piece = String(st->first ? "\n" : ",\n") + "    \"" + n + "\": " + raw;
+            st->first = false;
+          }
+          if (st->piece.isEmpty()) { st->piece = "\n  }\n}\n"; st->done = true; }
+        }
+        size_t n = min(maxLen - out, st->piece.length() - st->pos);
+        memcpy(buf + out, st->piece.c_str() + st->pos, n);
+        st->pos += n;
+        out += n;
+      }
+      return out;
+    });
     String date = ts[0] ? String(ts).substring(0, 10) : String("backup");
     res->addHeader("Content-Disposition", "attachment; filename=\"obd2mqtt-backup-" + date + ".json\"");
+    res->addHeader("Cache-Control", "no-store");
     r->send(res);
   });
 
@@ -304,8 +343,10 @@ void begin() {
     bool doCfg = !r->hasParam("config") || r->getParam("config")->value() == "1";
     bool doProf = !r->hasParam("profiles") || r->getParam("profiles")->value() == "1";
     JsonDocument d;
-    if (body(r).isEmpty()) return sendMsg(r, false, T("Datei leer oder zu groß (max. 64 KB)", "File empty or too large (max. 64 KB)"));
-    if (auto e = deserializeJson(d, body(r))) return sendMsg(r, false, String(T("Keine gültige JSON-Datei: ", "Not a valid JSON file: ")) + e.c_str());
+    char* raw = (char*)r->_tempObject;
+    if (!raw || !raw[0]) return sendMsg(r, false, T("Datei leer, zu groß (max. 64 KB) oder zu wenig Speicher", "File empty, too large (max. 64 KB) or not enough memory"));
+    // direkt im empfangenen Puffer parsen (keine Kopie als String – spart bei 30 KB Sicherung viel RAM)
+    if (auto e = deserializeJson(d, raw)) return sendMsg(r, false, String(T("Keine gültige JSON-Datei: ", "Not a valid JSON file: ")) + e.c_str());
     if (d["type"] != "obd2mqtt-backup") return sendMsg(r, false, T("Das ist keine OBD2MQTT-Sicherung", "This is not an OBD2MQTT backup"));
     int okP = 0;
     String errs;
@@ -373,6 +414,24 @@ void begin() {
   });
 
   // OTA-Firmware-Update (firmware.bin)
+  // Online-Update von GitHub: GET = Stand, POST ?action=check|install
+  server.on("/api/online-update", HTTP_GET, [](AsyncWebServerRequest* r) {
+    if (!auth(r)) return;
+    JsonDocument d;
+    OnlineUpdate::stateJson(d);
+    sendJson(r, d);
+  });
+  server.on("/api/online-update", HTTP_POST, [](AsyncWebServerRequest* r) {
+    if (!auth(r)) return;
+    String a = r->hasParam("action") ? r->getParam("action")->value() : "";
+    if (a == "check") { OnlineUpdate::requestCheck(); return sendMsg(r, true, T("Prüfung gestartet", "Check started")); }
+    if (a == "install") {
+      if (OnlineUpdate::requestInstall()) return sendMsg(r, true, T("Update gestartet", "Update started"));
+      return sendMsg(r, false, T("Keine neuere Version bekannt – zuerst prüfen", "No newer version known – check first"));
+    }
+    sendMsg(r, false, "action?");
+  });
+
   // OTA-Firmware-Update (obd2mqtt-vX.Y.Z-esp32-ota.bin)
   server.on("/api/update", HTTP_GET, [](AsyncWebServerRequest* r) {
     if (!auth(r)) return;

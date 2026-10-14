@@ -43,6 +43,7 @@ struct AppConfig {
   // Zeit & Log
   String ntpServer = "pool.ntp.org";
   String tz = "CET-1CEST,M3.5.0,M10.5.0/3";  // POSIX-Zeitzone (Deutschland)
+  bool updateCheck = true;              // täglich auf GitHub nach neuer Firmware sehen
   bool logPersist = true;               // Log im Flash speichern (übersteht Neustarts)
   String lang = "de";                   // Sprache: de | en
 };
