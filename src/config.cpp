@@ -240,7 +240,6 @@ void configToJson(JsonDocument& d, bool mask) {
   d["ntp_server"] = cfg.ntpServer;
   d["tz"] = cfg.tz;
   d["log_persist"] = cfg.logPersist;
-  d["update_check"] = cfg.updateCheck;
   d["lang"] = cfg.lang;
 }
 
@@ -295,7 +294,6 @@ void configFromJson(JsonVariantConst s) {
   if (cfg.ntpServer.isEmpty()) cfg.ntpServer = "pool.ntp.org";
   if (cfg.tz.isEmpty()) cfg.tz = "CET-1CEST,M3.5.0,M10.5.0/3";
   if (s["log_persist"].is<bool>()) cfg.logPersist = s["log_persist"];
-  if (s["update_check"].is<bool>()) cfg.updateCheck = s["update_check"];
   str("lang", cfg.lang);
   if (cfg.lang != "en") cfg.lang = "de";
   g_lang = cfg.lang == "en" ? 1 : 0;

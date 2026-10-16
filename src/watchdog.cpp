@@ -18,6 +18,8 @@ RTC_NOINIT_ATTR static uint32_t rtcMagic;
 RTC_NOINIT_ATTR static uint32_t rtcCrashes;
 RTC_NOINIT_ATTR static char rtcWhy[64];
 RTC_NOINIT_ATTR static char rtcStep[32];
+RTC_NOINIT_ATTR static char rtcTask[32];   // Schritt des Update-Tasks
+static TaskHandle_t wdtTask = nullptr;
 static String hang;
 
 static bool safe = false;
@@ -50,6 +52,7 @@ void begin() {
     rtcCrashes = 0;
     rtcWhy[0] = 0;
     rtcStep[0] = 0;
+    rtcTask[0] = 0;
   }
   bool crash = r == ESP_RST_PANIC || r == ESP_RST_INT_WDT || r == ESP_RST_TASK_WDT || r == ESP_RST_WDT;
   if (crash) rtcCrashes++;
@@ -60,8 +63,14 @@ void begin() {
   reason = resetReason();
 
   rtcStep[sizeof(rtcStep) - 1] = 0;
+  rtcTask[sizeof(rtcTask) - 1] = 0;
   if (crash && rtcStep[0]) hang = rtcStep;
+  if (crash && rtcTask[0]) {   // Update-Task lief: der genauere Hinweis
+    if (hang.length()) logf(T("Haupt-Task war bei: %s", "Main task was at: %s"), hang.c_str());
+    hang = rtcTask;
+  }
   rtcStep[0] = 0;
+  rtcTask[0] = 0;
 
   safe = rtcCrashes >= SAFE_AFTER;
   logf(T("Letzter Neustart: %s%s", "Last restart: %s%s"), reason.c_str(),
@@ -77,12 +86,13 @@ void armTaskWdt() {
 #else
   esp_task_wdt_init(TASK_WDT_S, true);
 #endif
-  if (esp_task_wdt_add(NULL) == ESP_OK) armed = true;
+  if (esp_task_wdt_add(NULL) == ESP_OK) { armed = true; wdtTask = xTaskGetCurrentTaskHandle(); }
   logf(T("Watchdog aktiv (Hänger > %lus → Neustart)", "Watchdog active (hang > %lus → restart)"), (unsigned long)TASK_WDT_S);
 }
 
 void feed() {
-  if (armed) esp_task_wdt_reset();
+  // nur der überwachte Haupt-Task – aus anderen Tasks (z. B. Online-Update) wäre es ein Fehler
+  if (armed && xTaskGetCurrentTaskHandle() == wdtTask) esp_task_wdt_reset();
 }
 
 void restart(const char* why) {
@@ -101,6 +111,11 @@ void step(const char* what) {
   strlcpy(rtcStep, what, sizeof(rtcStep));
 }
 const char* hangStep() { return hang.c_str(); }
+
+void taskStep(const char* what) {
+  if (!what) { rtcTask[0] = 0; return; }
+  strlcpy(rtcTask, what, sizeof(rtcTask));
+}
 
 void loop(bool wifiUp, bool mqttConfigured, bool mqttUp, bool apClients) {
   feed();

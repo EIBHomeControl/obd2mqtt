@@ -19,5 +19,6 @@ void clearCrashCounter();           // z.B. bei manuellem Neustart
 // Merkt sich (überlebt den Neustart), was die Firmware gerade tut. Hängt sie, steht nach dem
 // Watchdog-Neustart im Log, wobei („Hing bei: BLE subscribe/pairing“). nullptr = nichts Besonderes.
 void step(const char* what);
-const char* hangStep();             // Schritt, bei dem die Firmware vor dem letzten Absturz hing ("" = unbekannt)
+const char* hangStep();
+void taskStep(const char* what);    // wie step(), aber für den Update-Task (eigener Speicherplatz)             // Schritt, bei dem die Firmware vor dem letzten Absturz hing ("" = unbekannt)
 }

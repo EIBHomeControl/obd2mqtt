@@ -102,11 +102,6 @@ void begin() {
   NimBLEDevice::setPower(9);   // max. TX-Leistung (dBm), hilft bei Garage → Auto
 }
 
-void shutdown() {
-  disconnect();
-  NimBLEDevice::deinit(true);
-}
-
 bool connected() { return client && client->isConnected(); }
 uint32_t dropCount() { return drops; }
 bool relaxedParams() { return relaxed; }

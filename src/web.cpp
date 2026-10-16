@@ -10,7 +10,6 @@
 #include "log.h"
 #include "i18n.h"
 #include "poller.h"
-#include "online_update.h"
 #include "web_ui.h"
 #include "help_ui.h"
 #include "watchdog.h"
@@ -414,24 +413,6 @@ void begin() {
   });
 
   // OTA-Firmware-Update (firmware.bin)
-  // Online-Update von GitHub: GET = Stand, POST ?action=check|install
-  server.on("/api/online-update", HTTP_GET, [](AsyncWebServerRequest* r) {
-    if (!auth(r)) return;
-    JsonDocument d;
-    OnlineUpdate::stateJson(d);
-    sendJson(r, d);
-  });
-  server.on("/api/online-update", HTTP_POST, [](AsyncWebServerRequest* r) {
-    if (!auth(r)) return;
-    String a = r->hasParam("action") ? r->getParam("action")->value() : "";
-    if (a == "check") { OnlineUpdate::requestCheck(); return sendMsg(r, true, T("Prüfung gestartet", "Check started")); }
-    if (a == "install") {
-      if (OnlineUpdate::requestInstall()) return sendMsg(r, true, T("Update gestartet", "Update started"));
-      return sendMsg(r, false, T("Keine neuere Version bekannt – zuerst prüfen", "No newer version known – check first"));
-    }
-    sendMsg(r, false, "action?");
-  });
-
   // OTA-Firmware-Update (obd2mqtt-vX.Y.Z-esp32-ota.bin)
   server.on("/api/update", HTTP_GET, [](AsyncWebServerRequest* r) {
     if (!auth(r)) return;

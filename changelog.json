@@ -2,18 +2,14 @@
  {
   "v": "0.3.24",
   "de": [
-   "Fix Online-Update: Prüfung führte zu Watchdog-Neustart, Absturz bzw. „Antwort unlesbar: NoMemory“ – bei offener TLS-Verbindung reichte der Speicher nicht. Jetzt: Abfragen pausieren und Bluetooth trennt während der Prüfung, der ESP32 liest nur noch Version und Download-Adresse (den Änderungstext holt der Browser direkt von GitHub), Speicherprüfung vor dem Verbinden mit klarer Meldung statt Absturz",
-   "Online-Update: TLS-Verbindungsaufbau max. 15 s, Handshake max. 20 s (vorher bis 120 s – länger als der Watchdog), Antwort gepuffert mit 30-s-Limit; beim Installieren wird Bluetooth immer abgeschaltet",
-   "Online-Update: ausführliches Log (freier Speicher, Dauer von TLS-Aufbau und Antwort, HTTP-Status, gelesene Bytes, TLS-Fehler im Klartext, freier Stack) und feinere Hänger-Schritte; das Log wird vor dem Verbinden gesichert",
-   "Nach einem Absturz während der Update-Prüfung bzw. im sicheren Modus wird die automatische Prüfung bis zum nächsten Neustart ausgesetzt (keine Absturzschleife)",
-   "Log-Dateien werden bei Absturzserien nicht mehr gelöscht (nur noch bei vollem Dateisystem) – sie sind dann das wichtigste Beweisstück"
+   "Online-Update aus 0.3.23 wieder entfernt: Die verschlüsselte Verbindung zu GitHub (TLS) braucht neben Bluetooth, Web und MQTT mehr Speicher und Stack, als der ESP32 zuverlässig hat – die Prüfung führte zu Hängern und Abstürzen. Updates weiter per Datei-Upload (System → Firmware-Update); die Home-Assistant-Entität „Firmware“ wird automatisch entfernt",
+   "Log-Dateien werden bei Absturzserien nicht mehr gelöscht (nur noch bei vollem Dateisystem) – sie sind dann das wichtigste Beweisstück",
+   "Watchdog wird nur noch vom überwachten Haupt-Task gefüttert"
   ],
   "en": [
-   "Fix online update: the check caused a watchdog restart, a crash or “Unreadable response: NoMemory” – memory was too short while the TLS connection was open. Now: polling pauses and Bluetooth disconnects during the check, the ESP32 only reads version and download address (the browser fetches the change text directly from GitHub), memory check before connecting with a clear message instead of a crash",
-   "Online update: TLS connect max. 15 s, handshake max. 20 s (previously up to 120 s – longer than the watchdog), response buffered with a 30 s limit; Bluetooth is always switched off when installing",
-   "Online update: detailed log (free memory, duration of TLS setup and response, HTTP status, bytes read, TLS errors in plain text, free stack) and finer hang steps; the log is saved before connecting",
-   "After a crash during the update check or in safe mode, the automatic check is suspended until the next restart (no crash loop)",
-   "Log files are no longer deleted after a series of crashes (only when the file system is full) – they are the most important evidence then"
+   "Online update from 0.3.23 removed again: the encrypted connection to GitHub (TLS) needs more memory and stack next to Bluetooth, web and MQTT than the ESP32 reliably has – the check caused hangs and crashes. Updates continue via file upload (System → Firmware update); the Home Assistant entity “Firmware” is removed automatically",
+   "Log files are no longer deleted after a series of crashes (only when the file system is full) – they are the most important evidence then",
+   "The watchdog is only fed by the supervised main task"
   ]
  },
  {

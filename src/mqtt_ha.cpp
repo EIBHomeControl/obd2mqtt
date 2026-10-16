@@ -6,7 +6,6 @@
 #include "log.h"
 #include "i18n.h"
 #include "poller.h"
-#include "online_update.h"
 
 namespace MqttHa {
 
@@ -168,17 +167,7 @@ static void sendDiscovery() {
     d["icon"] = "mdi:car-info";
     publishConfig("sensor", "profile", d);
   }
-  { // Firmware-Update (HA „update“-Entität: zeigt neue Version, Installieren startet das Online-Update)
-    JsonDocument d;
-    d["name"] = "Firmware";
-    d["state_topic"] = topic("update");
-    d["command_topic"] = topic("update/install");
-    d["payload_install"] = "install";
-    d["device_class"] = "firmware";
-    d["entity_category"] = "config";
-    publishConfig("update", "firmware", d);
-  }
-  OnlineUpdate::publishMqtt();
+  { JsonDocument empty; publishConfig("update", "firmware", empty); }   // Update-Entität aus 0.3.23 wieder entfernen
   publishProfile();
   logf(T("MQTT Discovery gesendet (%u PIDs aktiv)", "MQTT discovery sent (%u PIDs active)"), (unsigned)now.size());
 }
@@ -188,13 +177,6 @@ static void onMessage(char* t, byte* payload, unsigned int len) {
   for (unsigned i = 0; i < len && i < 16; i++) v += (char)payload[i];
   v.trim();
   v.toUpperCase();
-  if (tp == topic("update/install")) {
-    if (v == "INSTALL") {
-      if (OnlineUpdate::requestInstall()) logf("%s", T("Online-Update über Home Assistant angestoßen", "Online update triggered via Home Assistant"));
-      else logf("%s", T("Home Assistant: Installieren ignoriert – keine neuere Version bekannt", "Home Assistant: install ignored – no newer version known"));
-    }
-    return;
-  }
   if (tp == topic("polling/set")) {
     bool on = v == "ON" || v == "1" || v == "TRUE";
     if (on || v == "OFF" || v == "0" || v == "FALSE") Poller::requestEnabled(on);
@@ -225,7 +207,6 @@ void loop() {
     logf(T("MQTT verbunden mit %s:%u", "MQTT connected to %s:%u"), cfg.mqttHost.c_str(), cfg.mqttPort);
     mqtt.publish(will.c_str(), "online", true);
     mqtt.subscribe(topic("polling/set").c_str());
-    mqtt.subscribe(topic("update/install").c_str());
     discoveryPending = true;
   }
   if (discoveryPending) { discoveryPending = false; sendDiscovery(); }

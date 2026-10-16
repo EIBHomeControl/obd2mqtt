@@ -24,7 +24,6 @@ Car (OBD2 dongle) ──Bluetooth LE──► ESP32 in the garage ──WiFi─�
 - MQTT auto-discovery: sensors appear automatically as a device in Home Assistant
 - 12 V protection (ATRV), pause when the car doesn't respond, BLE disconnects between polls so the dongle can sleep
 - Setup access point with captive portal, mDNS (`http://obd2mqtt.local`), OTA updates, optional password protection
-- **Online update** from the GitHub releases: daily check, changelog of the new version, install with one click (web interface or Home Assistant update entity)
 - Watchdog with automatic restart and safe mode
 - **Diagnostic report** (one click, copy/download, no WiFi/IP/passwords) and a 2-hour diagnostic log – ideal for beta testers
 

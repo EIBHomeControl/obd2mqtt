@@ -10,7 +10,6 @@
 #include "poller.h"
 #include "watchdog.h"
 #include "web.h"
-#include "online_update.h"
 
 static DNSServer dns;
 static bool apActive = false;
@@ -205,8 +204,6 @@ void loop() {
   Poller::loop();
   Watchdog::step("Web");
   Web::loop();
-  Watchdog::step("Update");
-  OnlineUpdate::loop();
 
   timeLoop(cfg.ntpServer.c_str());
   static uint32_t lastFlush = 0;
