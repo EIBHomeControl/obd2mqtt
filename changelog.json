@@ -1,5 +1,22 @@
 [
  {
+  "v": "0.3.24",
+  "de": [
+   "Fix Online-Update: Prüfung führte zu Watchdog-Neustart, Absturz bzw. „Antwort unlesbar: NoMemory“ – bei offener TLS-Verbindung reichte der Speicher nicht. Jetzt: Abfragen pausieren und Bluetooth trennt während der Prüfung, der ESP32 liest nur noch Version und Download-Adresse (den Änderungstext holt der Browser direkt von GitHub), Speicherprüfung vor dem Verbinden mit klarer Meldung statt Absturz",
+   "Online-Update: TLS-Verbindungsaufbau max. 15 s, Handshake max. 20 s (vorher bis 120 s – länger als der Watchdog), Antwort gepuffert mit 30-s-Limit; beim Installieren wird Bluetooth immer abgeschaltet",
+   "Online-Update: ausführliches Log (freier Speicher, Dauer von TLS-Aufbau und Antwort, HTTP-Status, gelesene Bytes, TLS-Fehler im Klartext, freier Stack) und feinere Hänger-Schritte; das Log wird vor dem Verbinden gesichert",
+   "Nach einem Absturz während der Update-Prüfung bzw. im sicheren Modus wird die automatische Prüfung bis zum nächsten Neustart ausgesetzt (keine Absturzschleife)",
+   "Log-Dateien werden bei Absturzserien nicht mehr gelöscht (nur noch bei vollem Dateisystem) – sie sind dann das wichtigste Beweisstück"
+  ],
+  "en": [
+   "Fix online update: the check caused a watchdog restart, a crash or “Unreadable response: NoMemory” – memory was too short while the TLS connection was open. Now: polling pauses and Bluetooth disconnects during the check, the ESP32 only reads version and download address (the browser fetches the change text directly from GitHub), memory check before connecting with a clear message instead of a crash",
+   "Online update: TLS connect max. 15 s, handshake max. 20 s (previously up to 120 s – longer than the watchdog), response buffered with a 30 s limit; Bluetooth is always switched off when installing",
+   "Online update: detailed log (free memory, duration of TLS setup and response, HTTP status, bytes read, TLS errors in plain text, free stack) and finer hang steps; the log is saved before connecting",
+   "After a crash during the update check or in safe mode, the automatic check is suspended until the next restart (no crash loop)",
+   "Log files are no longer deleted after a series of crashes (only when the file system is full) – they are the most important evidence then"
+  ]
+ },
+ {
   "v": "0.3.23",
   "de": [
    "Neu: Online-Update (System → Online-Update) – prüft das neueste Release auf GitHub, zeigt die Änderungen seit der installierten Version und installiert die *-esp32-ota.bin auf Knopfdruck direkt aus dem Internet (verschlüsselte Verbindung mit Zertifikatsprüfung, Größen- und Image-Prüfung, danach Neustart)",

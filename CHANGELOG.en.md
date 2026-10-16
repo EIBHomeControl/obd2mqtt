@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.3.24
+- Fix online update: the check caused a watchdog restart, a crash or “Unreadable response: NoMemory” – memory was too short while the TLS connection was open. Now: polling pauses and Bluetooth disconnects during the check, the ESP32 only reads version and download address (the browser fetches the change text directly from GitHub), memory check before connecting with a clear message instead of a crash
+- Online update: TLS connect max. 15 s, handshake max. 20 s (previously up to 120 s – longer than the watchdog), response buffered with a 30 s limit; Bluetooth is always switched off when installing
+- Online update: detailed log (free memory, duration of TLS setup and response, HTTP status, bytes read, TLS errors in plain text, free stack) and finer hang steps; the log is saved before connecting
+- After a crash during the update check or in safe mode, the automatic check is suspended until the next restart (no crash loop)
+- Log files are no longer deleted after a series of crashes (only when the file system is full) – they are the most important evidence then
+
 ## 0.3.23
 - New: online update (System → Online update) – checks the latest release on GitHub, shows the changes since the installed version and installs the *-esp32-ota.bin directly from the internet at the push of a button (encrypted connection with certificate check, size and image check, then restart)
 - Automatic check 3 min after start and then daily (can be switched off in the settings); a new version is noted in the log

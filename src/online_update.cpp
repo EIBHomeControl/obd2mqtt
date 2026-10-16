@@ -49,29 +49,90 @@ static int cmpVer(String a, String b) {
   return 0;
 }
 
-// Release-Text nur bis zum Abschnitt der installierten Version (ältere Änderungen kennt man schon)
-static String newerNotes(const String& body) {
-  String cur = FW_VERSION;
-  int from = 0;
-  while (from < (int)body.length()) {
-    int nl = body.indexOf('\n', from);
-    if (nl < 0) nl = body.length();
-    String line = body.substring(from, nl);
-    if (line.startsWith("##") && from > 0) {
-      int p = line.indexOf(cur);
-      if (p >= 0) {
-        char after = p + cur.length() < line.length() ? line[p + cur.length()] : ' ';
-        if (!isdigit((unsigned char)after)) return body.substring(0, from);
-      }
-    }
-    from = nl + 1;
-  }
-  return body;
-}
-
 static void connectTls(WiFiClientSecure& c) {
   c.setCACert(GH_ROOT_CAS);
-  c.setTimeout(15);   // Sekunden
+  c.setTimeout(15);              // Sekunden je Lese-/Schreibvorgang
+  c.setHandshakeTimeout(20);     // Standard wären 120 s – länger als der 60-s-Watchdog
+}
+
+static String kb(uint32_t b) { return String(b / 1024) + " KB"; }
+
+// Eigener TLS-Verbindungsaufbau mit Zeitmessung und Klartext-Fehler (HTTPClient nutzt die Verbindung danach weiter)
+static bool tlsConnect(WiFiClientSecure& c, const char* host, String& err) {
+  logf(T("Online-Update: verbinde mit %s (Heap %s, größter Block %s)", "Online update: connecting to %s (heap %s, largest block %s)"),
+       host, kb(ESP.getFreeHeap()).c_str(), kb(ESP.getMaxAllocHeap()).c_str());
+  logFlush();   // falls die TLS-Bibliothek abstürzt, stehen die Zeilen davor schon im Flash
+  Watchdog::feed();
+  Watchdog::step("update TLS");
+  uint32_t t0 = millis();
+  bool ok = c.connect(host, 443, 15000);
+  uint32_t dt = millis() - t0;
+  Watchdog::feed();
+  if (!ok) {
+    char e[100] = "";
+    int code = c.lastError(e, sizeof(e));
+    err = String(T("TLS-Verbindung zu ", "TLS connection to ")) + host + T(" fehlgeschlagen nach ", " failed after ") + dt + " ms" +
+          (code ? String(" (") + code + ": " + e + ")" : String(""));
+    logf(T("Online-Update: %s (Heap danach %s)", "Online update: %s (heap afterwards %s)"), err.c_str(), kb(ESP.getFreeHeap()).c_str());
+    return false;
+  }
+  logf(T("Online-Update: TLS verbunden nach %lu ms (Heap %s)", "Online update: TLS connected after %lu ms (heap %s)"),
+       (unsigned long)dt, kb(ESP.getFreeHeap()).c_str());
+  return true;
+}
+
+// Liest die Antwort gepuffert, füttert dabei den Watchdog und bricht nach maxMs ab
+// (ArduinoJson liest sonst Zeichen für Zeichen direkt vom TLS-Client, ohne Gesamt-Zeitlimit).
+class GuardStream : public Stream {
+ public:
+  GuardStream(Client& c, uint32_t maxMs) : c_(c), t0_(millis()), max_(maxMs) {}
+  int available() override { return pos_ < len_ ? len_ - pos_ : c_.available(); }
+  int read() override { return (pos_ < len_ || fill()) ? buf_[pos_++] : -1; }
+  int peek() override { return (pos_ < len_ || fill()) ? buf_[pos_] : -1; }
+  size_t readBytes(char* b, size_t n) override {
+    size_t k = 0;
+    while (k < n) { int ch = read(); if (ch < 0) break; b[k++] = (char)ch; }
+    return k;
+  }
+  size_t write(uint8_t) override { return 0; }
+  void flush() override {}
+  size_t total = 0;
+  bool timedOut = false, closed = false;
+ private:
+  bool fill() {
+    while (true) {
+      Watchdog::feed();
+      if (millis() - t0_ > max_) { timedOut = true; return false; }
+      int a = c_.available();
+      if (a > 0) {
+        int n = c_.read(buf_, a < (int)sizeof(buf_) ? a : (int)sizeof(buf_));
+        if (n > 0) { pos_ = 0; len_ = n; total += n; return true; }
+      } else if (!c_.connected()) { closed = true; return false; }
+      delay(2);
+    }
+  }
+  Client& c_;
+  uint32_t t0_, max_;
+  uint8_t buf_[512];
+  int pos_ = 0, len_ = 0;
+};
+
+// Vor dem TLS-Aufbau: reicht der Speicher? Sonst klarer Abbruch statt Absturz in der TLS-Bibliothek.
+static bool enoughMemory() {
+  uint32_t fh = ESP.getFreeHeap(), mb = ESP.getMaxAllocHeap();
+  if (fh < 60000 || mb < 40000) {
+    String m = String(T("zu wenig freier Speicher für die verschlüsselte Verbindung (frei ", "not enough free memory for the encrypted connection (free ")) +
+               kb(fh) + T(", größter Block ", ", largest block ") + kb(mb) + T(", nötig ca. 60 / 40 KB)", ", needed approx. 60 / 40 KB)");
+    set("error", m);
+    logf(T("Online-Update: %s", "Online update: %s"), m.c_str());
+    return false;
+  }
+  return true;
+}
+
+static void logStack(const char* where) {
+  logf(T("Online-Update: %s – Heap %s (min. %s), freier Stack %u Bytes", "Online update: %s – heap %s (min. %s), free stack %u bytes"),
+       where, kb(ESP.getFreeHeap()).c_str(), kb(ESP.getMinFreeHeap()).c_str(), (unsigned)uxTaskGetStackHighWaterMark(nullptr));
 }
 
 static void doCheck() {
@@ -80,21 +141,32 @@ static void doCheck() {
   Watchdog::feed();
   Watchdog::step("update check");
   logf("%s", T("Online-Update: prüfe GitHub auf neue Firmware…", "Online update: checking GitHub for new firmware…"));
+  // Speicher für TLS (~45 KB) freimachen: Abfragen kurz pausieren, Bluetooth-Verbindung trennen
+  bool wasPaused = Poller::isPaused();
+  if (!wasPaused) { Poller::setPausedQuiet(true); ElmBle::disconnect(); delay(300); }
+  struct Resume { bool p; ~Resume() { if (!p) Poller::setPausedQuiet(false); } } resume{wasPaused};
+  if (!enoughMemory()) { Watchdog::step("Poller"); return; }
   WiFiClientSecure cli;
   connectTls(cli);
+  String err;
+  if (!tlsConnect(cli, "api.github.com", err)) { set("error", err); Watchdog::step("Poller"); return; }
   HTTPClient http;
   http.useHTTP10(true);   // kein „chunked“ – Antwort lässt sich direkt als Stream parsen
   http.setTimeout(15000);
   http.setUserAgent("obd2mqtt/" FW_VERSION);
-  String err;
+  http.setReuse(true);
   if (!http.begin(cli, "https://api.github.com/repos/" UPDATE_REPO "/releases/latest")) {
     set("error", T("Verbindung zu GitHub fehlgeschlagen", "Connecting to GitHub failed"));
     Watchdog::step("Poller");
     return;
   }
   http.addHeader("Accept", "application/vnd.github+json");
+  Watchdog::step("update GET");
+  uint32_t t0 = millis();
   int code = http.GET();
   Watchdog::feed();
+  logf(T("Online-Update: Antwort HTTP %d nach %lu ms (Länge %d)", "Online update: response HTTP %d after %lu ms (length %d)"),
+       code, (unsigned long)(millis() - t0), http.getSize());
   if (code != 200) {
     err = code == 404 ? String(T("noch kein Release veröffentlicht", "no release published yet"))
         : code < 0 ? String(T("GitHub nicht erreichbar (", "GitHub not reachable (")) + http.errorToString(code) + ")"
@@ -108,27 +180,39 @@ static void doCheck() {
   JsonDocument filter;
   filter["tag_name"] = true;
   filter["html_url"] = true;
-  filter["body"] = true;
+  // "body" (Änderungstext) bewusst nicht: kostet bei offener TLS-Verbindung zu viel RAM („NoMemory“).
+  // Die Weboberfläche holt den Text selbst im Browser von GitHub.
   filter["assets"][0]["name"] = true;
   filter["assets"][0]["size"] = true;
   filter["assets"][0]["browser_download_url"] = true;
   JsonDocument d;
-  DeserializationError e = deserializeJson(d, http.getStream(), DeserializationOption::Filter(filter));
+  Watchdog::step("update parse");
+  t0 = millis();
+  GuardStream gs(cli, 30000);
+  DeserializationError e = deserializeJson(d, gs, DeserializationOption::Filter(filter));
+  logf(T("Online-Update: %u Bytes gelesen in %lu ms%s%s (Heap %s)", "Online update: read %u bytes in %lu ms%s%s (heap %s)"),
+       (unsigned)gs.total, (unsigned long)(millis() - t0), gs.timedOut ? T(", Zeitlimit erreicht", ", time limit reached") : "",
+       gs.closed ? T(", Verbindung beendet", ", connection closed") : "", kb(ESP.getFreeHeap()).c_str());
   http.end();
+  cli.stop();
+  logStack(T("Prüfung beendet", "check finished"));
   Watchdog::feed();
   Watchdog::step("Poller");
-  if (e) { set("error", String(T("Antwort von GitHub unlesbar: ", "Unreadable response from GitHub: ")) + e.c_str()); return; }
+  if (e) {
+    String m = String(T("Antwort von GitHub unlesbar: ", "Unreadable response from GitHub: ")) + e.c_str();
+    if (gs.timedOut) m += T(" (Zeitlimit 30 s)", " (time limit 30 s)");
+    set("error", m);
+    logf(T("Online-Update: %s", "Online update: %s"), m.c_str());
+    return;
+  }
 
   String tag = d["tag_name"] | "";
-  String url, body = d["body"] | "";
+  String url;
   uint32_t size = 0;
   for (JsonObject a : d["assets"].as<JsonArray>()) {
     String n = a["name"] | "";
     if (n.endsWith("-esp32-ota.bin")) { url = a["browser_download_url"] | ""; size = a["size"] | 0; break; }
   }
-  body.replace("\r", "");
-  String nn = newerNotes(body);
-  if (nn.length() > 3000) nn = nn.substring(0, 3000) + "\n…";
   bool newer = tag.length() && cmpVer(tag, FW_VERSION) > 0;
   char ts[24] = "";
   if (timeValid()) { time_t t = time(nullptr); struct tm tmv; localtime_r(&t, &tmv); strftime(ts, sizeof(ts), "%d.%m.%Y %H:%M", &tmv); }
@@ -136,7 +220,7 @@ static void doCheck() {
     std::lock_guard<std::mutex> lk(mtx);
     latest = tag;
     releaseUrl = d["html_url"] | "";
-    notes = newer ? nn : String("");
+    notes = "";
     assetUrl = url;
     assetSize = size;
     checkedAt = ts;
@@ -165,12 +249,18 @@ static void doInstall() {
   Poller::setPaused(true);                  // keine BLE-Abfragen mehr
   Watchdog::step("update download");
   // TLS + Download brauchen ~45 KB am Stück – Bluetooth abschalten, es folgt ohnehin ein Neustart
-  bool bleOff = false;
-  if (ESP.getMaxAllocHeap() < 60000) { ElmBle::shutdown(); bleOff = true; delay(200); }
+  bool bleOff = true;
+  {
+    ElmBle::shutdown(); delay(300);   // Neustart folgt ohnehin – Bluetooth-Speicher für TLS + Download nutzen
+    logf(T("Online-Update: Bluetooth abgeschaltet für mehr Speicher (Heap jetzt %s, größter Block %s)", "Online update: Bluetooth switched off for more memory (heap now %s, largest block %s)"),
+         kb(ESP.getFreeHeap()).c_str(), kb(ESP.getMaxAllocHeap()).c_str());
+  }
   Watchdog::feed();
+  if (!enoughMemory()) { Watchdog::restart(T("Online-Update: zu wenig Speicher", "Online update: not enough memory")); return; }
 
   WiFiClientSecure cli;
   connectTls(cli);
+  logf(T("Online-Update: lade %s (%s)", "Online update: downloading %s (%s)"), url.c_str(), kb(size).c_str());
   HTTPClient http;
   http.useHTTP10(true);
   http.setTimeout(20000);
@@ -180,7 +270,17 @@ static void doInstall() {
   int code = 0;
   if (!http.begin(cli, url)) err = T("Verbindung zu GitHub fehlgeschlagen", "Connecting to GitHub failed");
   else {
+    Watchdog::step("update GET bin");
+    uint32_t t0 = millis();
     code = http.GET();
+    Watchdog::feed();
+    logf(T("Online-Update: Download-Antwort HTTP %d nach %lu ms (Länge %d, Heap %s)", "Online update: download response HTTP %d after %lu ms (length %d, heap %s)"),
+         code, (unsigned long)(millis() - t0), http.getSize(), kb(ESP.getFreeHeap()).c_str());
+    if (code < 0) {
+      char e[100] = "";
+      if (cli.lastError(e, sizeof(e))) logf(T("Online-Update: TLS-Fehler: %s", "Online update: TLS error: %s"), e);
+    }
+    Watchdog::step("update download");
     if (code != 200) err = String(T("Download fehlgeschlagen: ", "Download failed: ")) + (code < 0 ? http.errorToString(code) : String("HTTP ") + code);
   }
   int len = err.isEmpty() ? http.getSize() : 0;
@@ -235,7 +335,16 @@ void loop() {
   if (wantInstall) { wantInstall = false; doInstall(); return; }
   uint32_t now = millis();
   // automatisch: 3 min nach dem Start, danach alle 24 h
-  bool autoDue = cfg.updateCheck && WiFi.status() == WL_CONNECTED &&
+  static bool blocked = false, blockLogged = false;
+  if (!blockLogged) {
+    blockLogged = true;
+    String hs = Watchdog::hangStep();
+    blocked = Watchdog::safeMode() || hs.startsWith("update");
+    if (blocked && cfg.updateCheck)
+      logf("%s", T("Online-Update: automatische Prüfung bis zum nächsten Neustart ausgesetzt (letzter Absturz während der Update-Prüfung bzw. sicherer Modus)",
+                   "Online update: automatic check suspended until the next restart (last crash during the update check or safe mode)"));
+  }
+  bool autoDue = !blocked && cfg.updateCheck && WiFi.status() == WL_CONNECTED &&
                  (lastCheckMs == 0 ? now > 180000UL : now - lastCheckMs > 24UL * 3600 * 1000);
   if (wantCheck || autoDue) {
     wantCheck = false;
@@ -265,7 +374,6 @@ void publishMqtt() {
     d["latest_version"] = latest.length() ? (latest.startsWith("v") ? latest.substring(1) : latest) : String(FW_VERSION);
     d["title"] = "OBD2MQTT";
     if (releaseUrl.length()) d["release_url"] = releaseUrl;
-    if (notes.length()) d["release_summary"] = notes.substring(0, 240);
   }
   String s;
   serializeJson(d, s);

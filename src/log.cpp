@@ -210,9 +210,10 @@ void logBootCheck(uint32_t crashes) {
   std::lock_guard<std::mutex> fl(fmtx);
   size_t total = LittleFS.totalBytes(), used = LittleFS.usedBytes();
   bool full = total && used > (size_t)(total * FS_MAX_USE);
-  // Absturzschleife oder volles Dateisystem: Log-Dateien sind der wahrscheinlichste Auslöser → weg damit
-  if (crashes >= 2 || full) LittleFS.remove(LOG_OLD);
-  if (crashes >= 3 || (full && LittleFS.usedBytes() > (size_t)(total * FS_MAX_USE))) LittleFS.remove(LOG_FILE);
+  // Volles Dateisystem: Log-Dateien opfern. Bei Absturzserien bleiben sie erhalten (max. 2 × 16 KB) –
+  // sie sind dann das wichtigste Beweisstück; nur bei sehr vielen Abstürzen das ältere Log entfernen.
+  if (full || crashes >= 6) LittleFS.remove(LOG_OLD);
+  if (full && LittleFS.usedBytes() > (size_t)(total * FS_MAX_USE)) LittleFS.remove(LOG_FILE);
   {
     // Altlast aus Versionen ≤ 0.3.5 (48 KB je Datei) kürzen
     for (const char* p : {LOG_OLD, LOG_FILE}) {

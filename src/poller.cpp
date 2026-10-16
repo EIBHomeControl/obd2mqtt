@@ -837,6 +837,7 @@ static void updateCache() {
 
 static volatile bool paused = false;
 bool isPaused() { return paused || !bleOn; }
+void setPausedQuiet(bool p) { paused = p; }
 void setPaused(bool p) {
   paused = p;
   if (p) logf("%s", T("Abfragen pausiert (Firmware-Update)", "Polling paused (firmware update)"));

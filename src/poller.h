@@ -20,6 +20,7 @@ String lastErrorText();                       // aktueller „Letzter Fehler“ 
 void requestEnabled(bool on);                 // Hauptschalter (Web/MQTT) – wird im loop() gespeichert
 void setPaused(bool p);                       // z.B. während OTA
 bool isPaused();
+void setPausedQuiet(bool p);                  // ohne Log (kurze Pause, z. B. Update-Prüfung)
 
 enum JobType { JOB_RAW, JOB_TEST, JOB_SCAN, JOB_DIAG };
 void setDebug(uint32_t minutes);
